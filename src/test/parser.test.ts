@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { QQTextParser } from '../lib/parser';
+import { QQTextParser } from '../lib/core/parser';
 import { createMessage } from './utils';
 
 describe("QQTextParser", () => {

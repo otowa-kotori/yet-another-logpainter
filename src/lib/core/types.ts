@@ -1,4 +1,4 @@
-interface LogEntry {
+export interface LogEntry {
     /** 日志时间戳 */
     time: Date;
     /** 发送者/来源标识 */
@@ -14,29 +14,30 @@ interface LogEntry {
 }
 
 // 日志条目的数组类型
-type Log = LogEntry[];
+export type Log = LogEntry[];
 
 /**
  * 日志解析器基类
  */
-abstract class LogParser {
+export abstract class LogParser {
     abstract parse(raw: string): Log;
 }
 
 /**
  * 日志处理器基类
  */
-abstract class LogProcessor {
+export abstract class LogProcessor {
     abstract process(log: Log): Log;
 }
 
 /**
  * 日志格式化器基类
  */
-abstract class LogFormatter {
-    abstract format(log: Log): string;
+export abstract class LogFormatter {
+    abstract format(log: Log): string | Array<{
+        time: string,
+        sender: string,
+        message: string
+    }>;
 }
-
-export type { LogEntry, Log };
-export { LogParser, LogProcessor, LogFormatter };
 

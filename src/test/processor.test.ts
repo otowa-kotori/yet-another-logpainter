@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import * as processors from '../lib/processor';
+import * as processors from '../lib/core/processor';
 import { createMessage } from './utils';
 
 describe("RemoveImageProcessor", () => {
