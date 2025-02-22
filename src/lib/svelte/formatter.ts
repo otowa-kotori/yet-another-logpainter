@@ -3,6 +3,7 @@
  * 提供日志数据的格式化
  */
 import { LogFormatter, type Log } from '../core/types';
+import { formatTime } from '../utils';
 
 export class SvelteFormatter extends LogFormatter {
     format(log: Log): Array<{
@@ -11,11 +12,7 @@ export class SvelteFormatter extends LogFormatter {
         message: string
     }> {
         return log.map(entry => ({
-            time: entry.time.toLocaleTimeString('zh-CN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            }),
+            time: formatTime(entry.time, 'short'),
             sender: entry.sender,
             message: entry.message
         }));
