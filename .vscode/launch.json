@@ -1,6 +1,12 @@
 {
     "configurations": [
         {
+            "name": "Run tests",
+            "request": "launch",
+            "type": "node-terminal",
+            "command": "npm run test"
+        },
+        {
             "name": "Run development server",
             "request": "launch",
             "type": "node-terminal",

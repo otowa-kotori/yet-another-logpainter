@@ -13,7 +13,7 @@ export class ProcessorGroup extends LogProcessor {
 //消除日志里的[图片]
 export class RemoveImageProcessor extends LogProcessor {
     process(log: Log): Log {
-        return log.map(entry => ({ ...entry, message: entry.message.replace(/\[图片\]/g, '') }));
+        return log.map(entry => ({ ...entry, message: entry.message.replace(/\[图片\]/g, '').trim() }));
     }
 }
 
@@ -31,49 +31,26 @@ export class RemoveEmptyMessageProcessor extends LogProcessor {
  */
 export class ReplaceMeProcessor extends LogProcessor {
     process(log: Log): Log {
-        const result: Log = [];
-        
-        for (const entry of log) {
-            // 检查消息是否以 /me 开头
-            if (entry.message.trim().startsWith('/me ')) {
-                const message = entry.message.trim().substring(4);
-                result.push({
-                    ...entry,
-                    message: `${entry.sender}${message}`
-                });
-                continue;
-            }
+        return log.flatMap(entry => {
+            const message = entry.message.trim();
             
-            // 检查消息中间是否有 /me
-            const parts = entry.message.split('/me');
-            if (parts.length === 1) {
-                // 没有 /me，保持原样
-                result.push(entry);
-                continue;
+            // 处理以 /me 开头的消息
+            if (message.startsWith('/me ')) {
+                return [{
+                    ...entry,
+                    message: `${entry.sender}${message.substring(4)}`
+                }];
             }
             
             // 处理包含 /me 的消息
-            parts.forEach((part, index) => {
-                const trimmedPart = part.trim();
-                if (!trimmedPart) return;
-                
-                if (index === 0) {
-                    // 第一部分作为普通消息
-                    result.push({
-                        ...entry,
-                        message: trimmedPart
-                    });
-                } else {
-                    // 后续部分替换为玩家动作
-                    result.push({
-                        ...entry,
-                        message: `${entry.sender}${trimmedPart}`
-                    });
-                }
-            });
-        }
-        
-        return result;
+            const parts = message.split('/me').map(part => part.trim()).filter(Boolean);
+            if (parts.length === 1) return [entry];
+            
+            return parts.map((part, i) => ({
+                ...entry,
+                message: i === 0 ? part : `${entry.sender}${part}`
+            }));
+        });
     }
 }
 
