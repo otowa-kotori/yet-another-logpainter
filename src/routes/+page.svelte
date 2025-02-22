@@ -1,21 +1,21 @@
 <script lang="ts">
-    import { QQTextParser, LogPainter, ProcessorGroup, defaultProcessors, SvelteFormatter } from '$lib';
+    import { QQTextParser, LogPainter, ProcessorGroup, defaultProcessors, SvelteFormatter, StandardHTMLFormatter } from '$lib';
     import type { Log } from '$lib/core/types';
     // 创建LogPainter实例并配置格式化器
     const parser = new QQTextParser();
-    const formatter = new SvelteFormatter();
+    const htmlFormatter = new StandardHTMLFormatter();
+    const svelteFormatter = new SvelteFormatter();
     const logPainter = LogPainter.create(parser)
-        .withFormatter(formatter)
         .pipe(new ProcessorGroup(defaultProcessors));
     let rawLog = '';
-    let parsed_text = '';
-    let parsedLogs: Log;  // 添加这个变量来存储解析后的日志对象
-    let formattedLogs: Array<{ time: string, sender: string, message: string }> = [];  // 添加这行
+    let parsedLogs: Log;
+    let formattedLogs: Array<{ time: string, sender: string, message: string }> = [];
+    let htmlOutput = '';
 
     function parse_text() {
-        parsedLogs = parser.parse(rawLog);  // 先解析成日志对象
-        //parsed_text = logPainter.paint(rawLog);  // 保留原有的HTML渲染
-        formattedLogs = parsedLogs ? formatter.format(parsedLogs) : [];
+        parsedLogs = parser.parse(rawLog);
+        htmlOutput = logPainter.paint<string>(rawLog, htmlFormatter);  // HTML渲染
+        formattedLogs = logPainter.paint<Array<{ time: string, sender: string, message: string }>>(rawLog, svelteFormatter);  // Svelte渲染
     }
 </script>
 
@@ -24,8 +24,12 @@
 
 <textarea bind:value={rawLog}></textarea>
 <button on:click={parse_text}>Parse</button>
-<div>{@html parsed_text}</div>
 
+<!-- HTML渲染输出 -->
+<h2>HTML渲染输出</h2>
+<div>{@html htmlOutput}</div>
+<!-- Svelte渲染输出 -->
+<h2>Svelte渲染输出</h2>
 {#each formattedLogs as log}
     <div class="log-entry">
         <span class="log-time">{log.time}</span>
@@ -39,14 +43,10 @@
         /* 样式定义 */
     }
     .log-time {
-        /* 样式定义 */
-        color: #666;
+        color: silver;
     }
     .log-sender {
-        /* 样式定义 */
-    }
-    .log-message {
-        /* 样式定义 */
+        margin: 0 4px;
     }
 </style>
 
