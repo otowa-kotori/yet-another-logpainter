@@ -1,6 +1,7 @@
 <script lang="ts">
     import { ColorConfig } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
+    import { onMount } from 'svelte';
 
     export let colorConfig: ColorConfig;
     export let onColorUpdate: (name: string, newColor: string) => void;
@@ -27,6 +28,24 @@
             .querySelector('input[type="color"]') as HTMLInputElement;
         input.click();
     }
+
+    // 添加点击外部关闭下拉框的处理函数
+    function handleClickOutside(event: MouseEvent) {
+        const target = event.target as HTMLElement;
+        // 如果点击的不是下拉框相关元素，则关闭下拉框
+        if (!target.closest('.color-dropdown') && !target.closest('.color-btn')) {
+            activeDropdown = null;
+        }
+    }
+
+    onMount(() => {
+        // 添加全局点击事件监听
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            // 组件卸载时移除事件监听
+            document.removeEventListener('click', handleClickOutside);
+        };
+    });
 </script>
 
 <div class="color-manage">
@@ -57,7 +76,6 @@
                                     class="color-picker"
                                     on:input={(e) => {
                                         updateColor(sender.name, e.currentTarget.value);
-                                        toggleDropdown(sender.name);
                                     }}
                                 >
                                 <span class="color-preview" style="background-color: {sender.color}"></span>
