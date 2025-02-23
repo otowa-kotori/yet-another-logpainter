@@ -41,7 +41,7 @@ export class QQTextParser extends LogParser {
             const messageLine = lines.slice(1).join('\n');
             
             // 尝试匹配第一种格式：时间在前，(QQ号)可选
-            let match = headerLine.match(/^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s+([^(]+?)(?:\([^)]+\))?$/);
+            let match = headerLine.match(/^(\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{1,2}:\d{1,2})\s+([^(]+?)(?:\([^)]+\))?$/);
             
             if (match) {
                 const [_, timeStr, sender] = match;
