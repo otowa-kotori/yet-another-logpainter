@@ -1,16 +1,21 @@
 <script lang="ts">
     import { QQTextParser, ProcessorGroup, defaultProcessors, StandardHTMLFormatter, BBCodeFormatter } from '$lib';
-    import LogViewer from '$lib/svelte/LogViewer.svelte';
     import type { Log } from '$lib/core/types';
+    import TabContainer from '$lib/svelte/TabContainer.svelte';
+    import PreviewTab from '$lib/svelte/PreviewTab.svelte';
+    import BBCodeTab from '$lib/svelte/BBCodeTab.svelte';
 
     const parser = new QQTextParser();
     const processor = new ProcessorGroup(defaultProcessors);
     
     let rawLog = '';
     let processedLogs: Log;
-    let htmlOutput = '';
     let bbcodeOutput = '';
-    let activeTab = 'preview'; // 'preview' 或 'bbcode'
+
+    const tabs = [
+        { id: 'preview', label: '预览' },
+        { id: 'bbcode', label: 'BBCode' }
+    ];
 
     function parse_text() {
         // 解析并处理日志
@@ -18,9 +23,6 @@
         processedLogs = processor.process(parsedLog);
         
         // 格式化输出
-        const htmlFormatter = new StandardHTMLFormatter();
-        htmlOutput = htmlFormatter.format(processedLogs);
-        
         const bbcodeFormatter = new BBCodeFormatter();
         bbcodeOutput = bbcodeFormatter.format(processedLogs);
     }
@@ -43,35 +45,13 @@
                 <button on:click={parse_text} class="parse-button">转换</button>
             </div>
 
-            <div class="tabs">
-                <button 
-                    class="tab-button" 
-                    class:active={activeTab === 'preview'}
-                    on:click={() => activeTab = 'preview'}
-                >预览</button>
-                <button 
-                    class="tab-button" 
-                    class:active={activeTab === 'bbcode'}
-                    on:click={() => activeTab = 'bbcode'}
-                >BBCode</button>
-            </div>
-
-            <div class="tab-content">
+            <TabContainer {tabs} let:activeTab>
                 {#if activeTab === 'preview'}
-                    <div class="preview-tab">
-                        <LogViewer log={processedLogs} />
-                    </div>
+                    <PreviewTab log={processedLogs} />
                 {:else}
-                    <div class="bbcode-tab">
-                        <textarea 
-                            bind:value={bbcodeOutput} 
-                            readonly 
-                            class="output-textarea"
-                            placeholder="转换后的BBCode将显示在这里..."
-                        ></textarea>
-                    </div>
+                    <BBCodeTab bbcode={bbcodeOutput} />
                 {/if}
-            </div>
+            </TabContainer>
         </div>
     </div>
 </main>
@@ -165,56 +145,5 @@
     .parse-button:hover {
         background-color: #45a049;
     }
-
-    .tabs {
-        padding: 0 2rem;
-        border-bottom: 1px solid #eee;
-        margin-top: 1rem;
-    }
-
-    .tab-button {
-        padding: 0.6rem 1.2rem;
-        border: none;
-        background: none;
-        cursor: pointer;
-        margin-right: 1rem;
-        color: #666;
-        border-bottom: 2px solid transparent;
-        transition: all 0.3s;
-        font-size: 0.9rem;
-    }
-
-    .tab-button.active {
-        color: #4CAF50;
-        border-bottom: 2px solid #4CAF50;
-    }
-
-    .tab-content {
-        padding: 0 2rem 2rem 2rem;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .preview-tab, .bbcode-tab {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .output-textarea {
-        flex: 1;
-        min-height: 0;
-        width: 100%;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        resize: vertical;
-        font-family: monospace;
-        background-color: #f8f8f8;
-        font-size: 0.8rem;
-    }
-
 </style>
 
