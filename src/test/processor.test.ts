@@ -6,15 +6,11 @@ describe("RemoveImageProcessor", () => {
     it("should remove [图片] from message", () => {
         const imageProcessor = new processors.RemoveImageProcessor();
         const log = [createMessage({ 
-            message: "让我看看这张照片 [图片] 不错", 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n让我看看这张照片 [图片] 不错"
+            message: "让我看看这张照片 [图片] 不错"
         })];
         const result = imageProcessor.process(log);
         expect(result).toEqual([createMessage({ 
-            message: "让我看看这张照片  不错", 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n让我看看这张照片 [图片] 不错"
+            message: "让我看看这张照片  不错"
         })]);
     })  
 })
@@ -22,9 +18,8 @@ describe("RemoveImageProcessor", () => {
 describe("RemoveEmptyMessageProcessor", () => {
     it("should remove empty message", () => {
         const emptyProcessor = new processors.RemoveEmptyMessageProcessor();
-        const log = [createMessage({ 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n"
+        const log = [createMessage({
+            message: ""
         })];
         const result = emptyProcessor.process(log);
         expect(result).toEqual([]); 
@@ -35,37 +30,54 @@ describe("ReplaceMeProcessor", () => {
     it("should replace /me with sender", () => {
         const replaceProcessor = new processors.ReplaceMeProcessor();
         const log = [createMessage({ 
-            message: "/me 翻了翻书页", 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n/me 翻了翻书页"
+            sender: "A",
+            message: "/me 翻了翻书页"
         })];
         const result = replaceProcessor.process(log);
         expect(result).toEqual([createMessage({ 
-            message: "阿洛翻了翻书页", 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n/me 翻了翻书页"
+            sender: "A",
+            message: "A翻了翻书页"
         })]);
     })
 
     it("should replace /me with sender in the middle of the message", () => {
         const replaceProcessor = new processors.ReplaceMeProcessor();
         const log = [createMessage({ 
-            message: "看完了这本书 /me 合上书本", 
-            sender: "阿洛",
-            raw: "2024-01-01 12:34:56 阿洛\n看完了这本书 /me 合上书本"
+            sender: "B",
+            message: "看完了这本书 /me 合上书本"
         })];
         const result = replaceProcessor.process(log);
         expect(result).toEqual([
-            createMessage({ 
-                message: "看完了这本书", 
-                sender: "阿洛",
-                raw: "2024-01-01 12:34:56 阿洛\n看完了这本书 /me 合上书本"
+            createMessage({
+                sender: "B",
+                message: "看完了这本书"
             }),
             createMessage({ 
-                message: "阿洛合上书本", 
-                sender: "阿洛",
-                raw: "2024-01-01 12:34:56 阿洛\n看完了这本书 /me 合上书本"
+                sender: "B",
+                message: "B合上书本"
             })
         ]);
+    })
+})
+
+describe("RemoveDiceCommandProcessor", () => {
+    it("should remove dice command", () => {
+        const removeProcessor = new processors.RemoveDiceCommandProcessor();
+        const log = [createMessage({ 
+            message: ".rd20"
+        })];
+        const result = removeProcessor.process(log);
+        expect(result).toEqual([]);
+    })
+})
+
+describe("RemoveParenthesesProcessor", () => {
+    it("should remove parentheses", () => {
+        const removeProcessor = new processors.RemoveParenthesesProcessor();
+        const log = [createMessage({
+            message: "(掷骰子)"
+        })];
+        const result = removeProcessor.process(log);
+        expect(result).toEqual([]);
     })
 })

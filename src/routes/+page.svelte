@@ -21,9 +21,7 @@
         bbcodeOutput = logPainter.paint<string>(rawLog, bbcodeFormatter);  // BBCode渲染
     }
 </script>
-
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<link rel="stylesheet" href="/pico.min.css">
 
 <textarea bind:value={rawLog}></textarea>
 <button on:click={parse_text}>Parse</button>

@@ -17,6 +17,20 @@ export class RemoveImageProcessor extends LogProcessor {
     }
 }
 
+// 过滤掉以.<字母>开头的消息，这些消息是骰子指令消息
+export class RemoveDiceCommandProcessor extends LogProcessor {
+    process(log: Log): Log {
+        return log.filter(entry => !/^\.[a-zA-Z]/.test(entry.message))  // 过滤掉以.字母开头的消息
+    }
+}
+
+// 过滤掉以（开头的消息，包括中文和英文括号
+export class RemoveParenthesesProcessor extends LogProcessor {
+    process(log: Log): Log {
+        return log.filter(entry => !/^[\(（]/.test(entry.message))  // 过滤掉以（开头的消息
+    }
+}
+
 // 消除空消息
 export class RemoveEmptyMessageProcessor extends LogProcessor {
     process(log: Log): Log {
@@ -71,6 +85,8 @@ export const processorGroups = {
 export const defaultProcessors = [
     new RemoveImageProcessor(),
     new ReplaceMeProcessor(),
+    new RemoveDiceCommandProcessor(),
+    new RemoveParenthesesProcessor(),
     new RemoveEmptyMessageProcessor()  // 始终保持在最后，清理空消息
 ];
 
