@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as processors from '../lib/core/processor';
 import { createMessage } from './utils';
-import { NameColorer } from '../lib/core/nameColorer';
+import { NameColorer } from '../lib/core/namecolorer';
 
 describe("RemoveImageProcessor", () => {
     it("should remove [图片] from message", () => {

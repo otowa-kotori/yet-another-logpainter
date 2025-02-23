@@ -27,7 +27,7 @@
         bbcodeOutput = bbcodeFormatter.format(processedLogs);
     }
 </script>
-<link rel="stylesheet" href="/pico.min.css">
+<link rel="stylesheet" href="pico.min.css">
 
 <main class="container">
     <div class="content">
