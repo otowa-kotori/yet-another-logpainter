@@ -131,10 +131,10 @@
     
     .log-container {
         flex: 1;
-        overflow-y: auto;
         display: flex;
         flex-direction: column;
         padding: 0;
+        overflow: visible;
     }
 
     /* 自定义滚动条样式 */
