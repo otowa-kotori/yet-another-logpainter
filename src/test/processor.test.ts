@@ -81,3 +81,41 @@ describe("RemoveParenthesesProcessor", () => {
         expect(result).toEqual([]);
     })
 })
+
+describe("SplitMultilineProcessor", () => {
+    it("should split multiline message into multiple messages", () => {
+        const splitProcessor = new processors.SplitMultilineProcessor();
+        const log = [createMessage({ 
+            message: "第一行\n第二行\n第三行"
+        })];
+        const result = splitProcessor.process(log);
+        expect(result).toEqual([
+            createMessage({ message: "第一行" }),
+            createMessage({ message: "第二行" }),
+            createMessage({ message: "第三行" })
+        ]);
+    })
+
+    it("should handle empty lines", () => {
+        const splitProcessor = new processors.SplitMultilineProcessor();
+        const log = [createMessage({ 
+            message: "第一行\n\n第三行"
+        })];
+        const result = splitProcessor.process(log);
+        expect(result).toEqual([
+            createMessage({ message: "第一行" }),
+            createMessage({ message: "第三行" })
+        ]);
+    })
+
+    it("should preserve single line message", () => {
+        const splitProcessor = new processors.SplitMultilineProcessor();
+        const log = [createMessage({ 
+            message: "单行消息"
+        })];
+        const result = splitProcessor.process(log);
+        expect(result).toEqual([
+            createMessage({ message: "单行消息" })
+        ]);
+    })
+})

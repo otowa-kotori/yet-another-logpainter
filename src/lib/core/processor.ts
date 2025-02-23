@@ -68,6 +68,23 @@ export class ReplaceMeProcessor extends LogProcessor {
     }
 }
 
+export class SplitMultilineProcessor extends LogProcessor {
+    process(log: Log): Log {
+        return log.flatMap(entry => {
+            const lines = entry.message.split('\n').filter(line => line.trim() !== '');
+            
+            if (lines.length <= 1) {
+                return [entry];
+            }
+
+            return lines.map(line => ({
+                ...entry,
+                message: line
+            }));
+        });
+    }
+}
+
 // 处理器优先级组
 export const processorGroups = {
     preProcess: [
@@ -83,6 +100,7 @@ export const processorGroups = {
 
 // 预定义的处理器配置
 export const defaultProcessors = [
+    new SplitMultilineProcessor(),    // 首先处理多行消息
     new RemoveImageProcessor(),
     new ReplaceMeProcessor(),
     new RemoveDiceCommandProcessor(),
