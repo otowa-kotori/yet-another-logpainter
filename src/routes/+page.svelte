@@ -1,24 +1,27 @@
 <script lang="ts">
-    import { QQTextParser, LogPainter, ProcessorGroup, defaultProcessors, SvelteFormatter, StandardHTMLFormatter, BBCodeFormatter } from '$lib';
+    import { QQTextParser, ProcessorGroup, defaultProcessors, StandardHTMLFormatter, BBCodeFormatter } from '$lib';
+    import LogViewer from '$lib/svelte/LogViewer.svelte';
     import type { Log } from '$lib/core/types';
-    // 创建LogPainter实例并配置格式化器
+
     const parser = new QQTextParser();
-    const logPainter = LogPainter.create(parser)
-        .pipe(new ProcessorGroup(defaultProcessors));
+    const processor = new ProcessorGroup(defaultProcessors);
+    
     let rawLog = '';
-    let parsedLogs: Log;
-    let formattedLogs: Array<{ time: string, sender: string, message: string }> = [];
+    let processedLogs: Log;
     let htmlOutput = '';
     let bbcodeOutput = '';
 
     function parse_text() {
-        parsedLogs = parser.parse(rawLog);
+        // 解析并处理日志
+        const parsedLog = parser.parse(rawLog);
+        processedLogs = processor.process(parsedLog);
+        
+        // 格式化输出
         const htmlFormatter = new StandardHTMLFormatter();
-        htmlOutput = logPainter.paint<string>(rawLog, htmlFormatter); 
-        const svelteFormatter = new SvelteFormatter(); // HTML渲染
-        formattedLogs = logPainter.paint<Array<{ time: string, sender: string, message: string }>>(rawLog, svelteFormatter);  // Svelte渲染
+        htmlOutput = htmlFormatter.format(processedLogs);
+        
         const bbcodeFormatter = new BBCodeFormatter();
-        bbcodeOutput = logPainter.paint<string>(rawLog, bbcodeFormatter);  // BBCode渲染
+        bbcodeOutput = bbcodeFormatter.format(processedLogs);
     }
 </script>
 <link rel="stylesheet" href="/pico.min.css">
@@ -31,13 +34,7 @@
 <div>{@html htmlOutput}</div> -->
 <!-- Svelte渲染输出 -->
 <h2>Svelte渲染输出</h2>
-{#each formattedLogs as log}
-    <div class="log-entry">
-        <span class="log-time">{log.time}</span>
-        <span class="log-sender">&lt;{log.sender}&gt;</span>
-        <span class="log-message">{log.message}</span>
-    </div>
-{/each}
+<LogViewer log={processedLogs} />
 <h2>BBCode渲染输出</h2>
 <textarea bind:value={bbcodeOutput}></textarea>
 

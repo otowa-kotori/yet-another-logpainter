@@ -1,3 +1,5 @@
+import type { Color } from 'chroma-js';
+
 export interface LogEntry {
     /** 日志时间戳 */
     time: Date;
@@ -6,7 +8,7 @@ export interface LogEntry {
     /** 日志消息内容 */
     message: string;
     /** 显示颜色（用于UI渲染） */
-    color?: string;
+    color?: Color;
     /** 原始日志文本 */
     raw: string;
     /** 额外的元数据信息，键值对形式 */
@@ -34,10 +36,6 @@ export abstract class LogProcessor {
  * 日志格式化器基类
  */
 export abstract class LogFormatter {
-    abstract format(log: Log): string | Array<{
-        time: string,
-        sender: string,
-        message: string
-    }>;
+    abstract format(log: Log): string;
 }
 

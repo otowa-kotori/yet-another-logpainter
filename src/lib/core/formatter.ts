@@ -5,6 +5,7 @@
 
 // 类型导入
 import type { Log } from './types';
+import type { Color } from 'chroma-js';
 
 // 基类导入
 import { LogFormatter } from './types';
@@ -18,7 +19,8 @@ export class StandardHTMLFormatter extends LogFormatter {
         return log
             .map(entry => {
                 const timeStr = formatTime(entry.time, 'short');
-                return `<span style="color:silver">${timeStr}</span><span>&lt;${entry.sender}&gt; ${entry.message}</span><br>`;
+                const senderColor = entry.color?.hex() || 'black';
+                return `<span style="color:silver">${timeStr}</span><span style="color:${senderColor}">&lt;${entry.sender}&gt;${entry.message}</span><br>`;
             })
             .join('\n');
     }
@@ -34,8 +36,10 @@ export class BBCodeFormatter extends LogFormatter {
         return log
             .map(entry => {
                 const timeStr = formatTime(entry.time, 'short');
-                return `[color=silver]${timeStr}[/color] [color=black]<${entry.sender}>${entry.message}[/color]`;
+                const senderColor = entry.color?.hex() || 'black';
+                return `[color=silver]${timeStr}[/color] [color=${senderColor}]<${entry.sender}> ${entry.message}[/color]`;
             })
             .join('\n');
     }
-}   
+}
+

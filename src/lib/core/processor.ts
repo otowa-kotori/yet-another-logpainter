@@ -1,4 +1,5 @@
 import { LogProcessor, type Log } from './types';
+import { NameColorer } from './namecolorer';
 
 // Processor组，处理一个列表里的Processor
 export class ProcessorGroup extends LogProcessor {
@@ -68,6 +69,7 @@ export class ReplaceMeProcessor extends LogProcessor {
     }
 }
 
+// 将多行消息拆分成单行消息
 export class SplitMultilineProcessor extends LogProcessor {
     process(log: Log): Log {
         return log.flatMap(entry => {
@@ -85,18 +87,22 @@ export class SplitMultilineProcessor extends LogProcessor {
     }
 }
 
-// 处理器优先级组
-export const processorGroups = {
-    preProcess: [
-        new RemoveImageProcessor()
-    ],
-    mainProcess: [
-        new ReplaceMeProcessor()
-    ],
-    postProcess: [
-        new RemoveEmptyMessageProcessor()
-    ]
-};
+/**
+ * 为消息添加颜色
+ * 根据发送者名字分配颜色，相同的发送者使用相同的颜色
+ */
+export class ColorProcessor extends LogProcessor {
+    constructor(private colorer: NameColorer) {
+        super();
+    }
+
+    process(log: Log): Log {
+        return log.map(entry => ({
+            ...entry,
+            color: this.colorer.getColor(entry.sender)
+        }));
+    }
+}
 
 // 预定义的处理器配置
 export const defaultProcessors = [
@@ -105,6 +111,7 @@ export const defaultProcessors = [
     new ReplaceMeProcessor(),
     new RemoveDiceCommandProcessor(),
     new RemoveParenthesesProcessor(),
+    new ColorProcessor(new NameColorer()),  // 添加颜色处理器
     new RemoveEmptyMessageProcessor()  // 始终保持在最后，清理空消息
 ];
 
