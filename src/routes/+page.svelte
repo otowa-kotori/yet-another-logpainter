@@ -1,31 +1,68 @@
 <script lang="ts">
-    import { QQTextParser, ProcessorGroup, defaultProcessors, StandardHTMLFormatter, BBCodeFormatter } from '$lib';
+    import { QQTextParser, ProcessorGroup, BBCodeFormatter } from '$lib';
+    import { 
+        SplitMultilineProcessor,
+        RemoveImageProcessor,
+        ReplaceMeProcessor,
+        RemoveDiceCommandProcessor,
+        RemoveParenthesesProcessor,
+        ColorProcessor,
+        RemoveEmptyMessageProcessor
+    } from '$lib/core/processor';
     import type { Log } from '$lib/core/types';
     import TabContainer from '$lib/svelte/TabContainer.svelte';
     import PreviewTab from '$lib/svelte/PreviewTab.svelte';
     import BBCodeTab from '$lib/svelte/BBCodeTab.svelte';
+    import ColorManageTab from '$lib/svelte/ColorManageTab.svelte';
+    import { AssignColors, ColorConfig } from '$lib/core/namecolorer';
 
     const parser = new QQTextParser();
-    const processor = new ProcessorGroup(defaultProcessors);
+    let colorConfig = new ColorConfig();
+    
+    // 文本处理器
+    const textProcessors = [
+        new SplitMultilineProcessor(),    
+        new RemoveImageProcessor(),
+        new ReplaceMeProcessor(),
+        new RemoveDiceCommandProcessor(),
+        new RemoveParenthesesProcessor(),
+        new RemoveEmptyMessageProcessor()
+    ];
+
+    const textProcessor = new ProcessorGroup(textProcessors);
     
     let rawLog = '';
+    let parsedLogs: Log;
     let processedLogs: Log;
+    let coloredLogs: Log;
     let bbcodeOutput = '';
 
     const tabs = [
         { id: 'preview', label: '预览' },
-        { id: 'bbcode', label: 'BBCode' }
+        { id: 'bbcode', label: 'BBCode' },
+        { id: 'color', label: '颜色管理' }
     ];
 
     function parse_text() {
-        // 解析并处理日志
-        const parsedLog = parser.parse(rawLog);
-        processedLogs = processor.process(parsedLog);
-        
-        // 格式化输出
-        const bbcodeFormatter = new BBCodeFormatter();
-        bbcodeOutput = bbcodeFormatter.format(processedLogs);
+        // 解析并处理文本
+        parsedLogs = parser.parse(rawLog);
+        processedLogs = textProcessor.process(parsedLogs);
+        // 生成新的颜色配置
+        colorConfig = AssignColors(colorConfig, processedLogs.map(entry => entry.sender));
+        applyColors();
     }
+
+    function applyColors() {
+        // 仅应用颜色
+        const colorProcessor = new ColorProcessor(colorConfig);
+        coloredLogs = colorProcessor.process(processedLogs);
+        // 更新BBCode输出
+        const bbcodeFormatter = new BBCodeFormatter();
+        bbcodeOutput = bbcodeFormatter.format(coloredLogs);
+    }
+
+    // 监听颜色配置变化
+    $: colorConfig.version, processedLogs && applyColors();
 </script>
 <link rel="stylesheet" href="pico.min.css">
 
@@ -47,9 +84,11 @@
 
             <TabContainer {tabs} let:activeTab>
                 {#if activeTab === 'preview'}
-                    <PreviewTab log={processedLogs} />
-                {:else}
+                    <PreviewTab log={coloredLogs} />
+                {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
+                {:else}
+                    <ColorManageTab colorConfig={colorConfig} />
                 {/if}
             </TabContainer>
         </div>
