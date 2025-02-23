@@ -37,7 +37,7 @@ export class BBCodeFormatter extends LogFormatter {
             .map(entry => {
                 const timeStr = formatTime(entry.time, 'short');
                 const senderColor = entry.color?.hex() || 'black';
-                return `[color=silver]${timeStr}[/color] [color=${senderColor}]<${entry.sender}> ${entry.message}[/color]`;
+                return `[color=silver]${timeStr}[/color][color=${senderColor}]<${entry.sender}>${entry.message}[/color]`;
             })
             .join('\n');
     }

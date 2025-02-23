@@ -15,12 +15,23 @@
 
 <style>
     .log-entry {
-        /* 样式定义 */
+        padding: 4px 8px;
+        line-height: 1.5;
+        word-break: break-word;
+        font-size: 0.8rem;
+    }
+    .log-entry:hover {
+        background-color: rgba(0, 0, 0, 0.05);
     }
     .log-time {
-        color: silver;
+        color: #888;
+        margin-right: 8px;
     }
     .log-sender {
         margin: 0 4px;
+        font-weight: 500;
+    }
+    .log-message {
+        margin-left: 4px;
     }
 </style> 
