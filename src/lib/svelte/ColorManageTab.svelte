@@ -1,17 +1,18 @@
 <script lang="ts">
-    import type { ColorConfig } from '$lib/core/namecolorer';
+    import { ColorConfig } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
 
     export let colorConfig: ColorConfig;
+    export let onColorUpdate: (name: string, newColor: string) => void;
 
     // 获取颜色映射并转换为数组
     $: senders = Array.from(colorConfig.colors.entries()).map(([name, color]) => ({
         name,
         color
     }));
-
     function updateColor(name: string, newColor: string) {
         console.log(`Updating color for ${name} to ${newColor}`);
+        onColorUpdate(name, newColor);
     }
 
     // 控制下拉菜单的显示

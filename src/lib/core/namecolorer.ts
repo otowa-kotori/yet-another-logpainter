@@ -32,17 +32,22 @@ export class ColorConfig {
     public aliases_to_name: Map<string, string>;
     private _version = 0;
 
-    constructor() {
-        this.colors = new Map();
-        this.aliases_to_name = new Map();
+    constructor(colors?: Map<string, chroma.Color>, aliases_to_name?: Map<string, string>, version?: number) {
+        this.colors = colors ?? new Map();
+        this.aliases_to_name = aliases_to_name ?? new Map();
+        this._version = version ?? 0;
     }
 
     get version() {
         return this._version;
     }
 
-    incrementVersion() {
-        this._version++;
+    GetNew(){
+        return new ColorConfig(
+            this.colors,
+            this.aliases_to_name,
+            this._version + 1
+        );
     }
 }
 
@@ -50,9 +55,7 @@ const MIN_DIFF = 20;
 
 // 为多个名字分配颜色
 export function AssignColors(config: ColorConfig, names: string[]): ColorConfig {
-    const newConfig = new ColorConfig();
-    newConfig.colors = new Map(config.colors);
-    newConfig.aliases_to_name = new Map(config.aliases_to_name);
+    const newConfig = config.GetNew();
 
     for (const name of names) {
         if (newConfig.colors.has(name)) continue;
@@ -77,7 +80,6 @@ export function AssignColors(config: ColorConfig, names: string[]): ColorConfig 
         newConfig.aliases_to_name.set(name, name);
     }
 
-    newConfig.incrementVersion();
     return newConfig;
 }
 

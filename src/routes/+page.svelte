@@ -15,6 +15,7 @@
     import BBCodeTab from '$lib/svelte/BBCodeTab.svelte';
     import ColorManageTab from '$lib/svelte/ColorManageTab.svelte';
     import { AssignColors, ColorConfig } from '$lib/core/namecolorer';
+    import chroma from 'chroma-js';
 
     const parser = new QQTextParser();
     let colorConfig = new ColorConfig();
@@ -60,9 +61,13 @@
         const bbcodeFormatter = new BBCodeFormatter();
         bbcodeOutput = bbcodeFormatter.format(coloredLogs);
     }
-
+    function onColorUpdate(name: string, newColor: string) {
+        let newConfig = colorConfig.GetNew();
+        newConfig.colors.set(name, chroma(newColor));
+        colorConfig = newConfig;
+    }
     // 监听颜色配置变化
-    $: colorConfig.version, processedLogs && applyColors();
+    $: colorConfig, processedLogs && applyColors();
 </script>
 <link rel="stylesheet" href="pico.min.css">
 
@@ -88,7 +93,7 @@
                 {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
                 {:else}
-                    <ColorManageTab colorConfig={colorConfig} />
+                    <ColorManageTab {onColorUpdate} colorConfig={colorConfig} />
                 {/if}
             </TabContainer>
         </div>
