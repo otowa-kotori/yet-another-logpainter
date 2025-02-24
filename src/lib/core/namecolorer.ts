@@ -28,43 +28,92 @@ export const default_colors = [
 ];
 
 export class ColorConfig {
-    public colors: Map<string, chroma.Color>;
-    public aliases_to_name: Map<string, string>;
-    private _version = 0;
+    private colors: Map<string, chroma.Color>;
+    private aliases_to_name: Map<string, string>;
 
-    constructor(colors?: Map<string, chroma.Color>, aliases_to_name?: Map<string, string>, version?: number) {
+    constructor(
+        colors?: Map<string, chroma.Color>,
+        aliases_to_name?: Map<string, string>
+    ) {
         this.colors = colors ?? new Map();
         this.aliases_to_name = aliases_to_name ?? new Map();
-        this._version = version ?? 0;
     }
 
-    get version() {
-        return this._version;
+    // 获取某个名字对应的颜色
+    getColor(name: string): chroma.Color {
+        const standardName = this.getStandardName(name);
+        return this.colors.get(standardName) ?? chroma('black');
     }
 
-    GetNew(){
-        return new ColorConfig(
-            this.colors,
-            this.aliases_to_name,
-            this._version + 1
-        );
+    hasColor(name: string): boolean {
+        return this.colors.has(name);
     }
+
+    getAllColors(): chroma.Color[] {
+        return Array.from(this.colors.values());
+    }
+
+    // 获取名字的标准形式（通过别名映射）
+    getStandardName(name: string): string {
+        return this.aliases_to_name.get(name) ?? name;
+    }
+
+    // 创建新的配置
+    merge(other: ColorConfig): ColorConfig {
+        const newColors = new Map(this.colors);
+        const newAliases = new Map(this.aliases_to_name);
+
+        other.colors.forEach((color, name) => {
+            newColors.set(name, color);
+        });
+        other.aliases_to_name.forEach((standardName, alias) => {
+            newAliases.set(alias, standardName);
+        });
+
+        return new ColorConfig(newColors, newAliases);
+    }
+
+    // 获取所有名字和颜色
+    getColorEntries(): [string, chroma.Color][] {
+        return Array.from(this.colors.entries());
+    }
+
+    setColor(name: string, color: chroma.Color | string): ColorConfig {
+        const newColors = new Map(this.colors);
+        newColors.set(name, typeof color === 'string' ? chroma(color) : color);
+        return new ColorConfig(newColors, this.aliases_to_name);
+    }
+}
+
+// 创建单个名字的配置
+export function CreateColorConfig(
+    name: string,
+    color: chroma.Color | string,
+    aliases: string[] = []
+): ColorConfig {
+    const chromaColor = typeof color === 'string' ? chroma(color) : color;
+    
+    const newColors = new Map([[name, chromaColor]]);
+    const newAliases = new Map(
+        [name, ...aliases].map(alias => [alias, name])
+    );
+
+    return new ColorConfig(newColors, newAliases);
 }
 
 const MIN_DIFF = 20;
 
 // 为多个名字分配颜色
 export function AssignColors(config: ColorConfig, names: string[]): ColorConfig {
-    const newConfig = config.GetNew();
+    let newConfig = config;
 
     for (const name of names) {
-        if (newConfig.colors.has(name)) continue;
+        if (newConfig.hasColor(name)) continue;
 
         // 如果没有已使用的颜色，直接使用第一个默认颜色
-        const usedColors = Array.from(newConfig.colors.values());
+        const usedColors = newConfig.getAllColors();
         if (!usedColors.length) {
-            newConfig.colors.set(name, default_colors[0].color);
-            newConfig.aliases_to_name.set(name, name);
+            newConfig = newConfig.merge(CreateColorConfig(name, default_colors[0].color));
             continue;
         }
 
@@ -76,20 +125,8 @@ export function AssignColors(config: ColorConfig, names: string[]): ColorConfig 
         });
 
         const finalColor = selectedColor?.color ?? chroma('black');
-        newConfig.colors.set(name, finalColor);
-        newConfig.aliases_to_name.set(name, name);
+        newConfig = newConfig.merge(CreateColorConfig(name, finalColor));
     }
 
     return newConfig;
-}
-
-// 获取名字的标准形式（通过别名映射）
-export function GetStandardName(config: ColorConfig, name: string): string {
-    return config.aliases_to_name.get(name) || name;
-}
-
-// 获取某个名字对应的颜色
-export function GetColor(config: ColorConfig, name: string): chroma.Color {
-    const standardName = GetStandardName(config, name);
-    return config.colors.get(standardName) || chroma('black');
 }

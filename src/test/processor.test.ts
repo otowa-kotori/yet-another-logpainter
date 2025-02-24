@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as processors from '../lib/core/processor';
 import { createMessage } from './utils';
-import { NameColorer } from '../lib/core/namecolorer';
+import { ColorConfig, AssignColors, CreateColorConfig } from '../lib/core/namecolorer';
+import chroma from 'chroma-js';
 
 describe("RemoveImageProcessor", () => {
     it("should remove [图片] from message", () => {
@@ -123,8 +124,8 @@ describe("SplitMultilineProcessor", () => {
 
 describe("ColorProcessor", () => {
     it("should add color to messages", () => {
-        const nameColorer = new NameColorer();
-        const colorProcessor = new processors.ColorProcessor(nameColorer);
+        const colorConfig = CreateColorConfig("Alice", "red");
+        const colorProcessor = new processors.ColorProcessor(colorConfig);
         const log = [
             createMessage({ sender: "Alice", message: "Hello" }),
             createMessage({ sender: "Bob", message: "Hi" })
@@ -135,13 +136,14 @@ describe("ColorProcessor", () => {
         // 检查是否添加了颜色
         expect(result[0].color).toBeDefined();
         expect(result[1].color).toBeDefined();
-        // 检查相同发送者是否获得相同颜色
-        expect(result[0].color?.hex()).toBe(nameColorer.getColor("Alice").hex());
+        // 检查相同发送者是否获得正确颜色
+        expect(result[0].color?.hex()).toBe(chroma("red").hex());
     });
 
     it("should maintain same color for same sender", () => {
-        const nameColorer = new NameColorer();
-        const colorProcessor = new processors.ColorProcessor(nameColorer);
+        let colorConfig = new ColorConfig();
+        colorConfig = AssignColors(colorConfig, ["Alice", "Bob"]);
+        const colorProcessor = new processors.ColorProcessor(colorConfig);
         const log = [
             createMessage({ sender: "Alice", message: "First message" }),
             createMessage({ sender: "Bob", message: "Hi" }),
@@ -157,7 +159,8 @@ describe("ColorProcessor", () => {
     });
 
     it("should preserve message content", () => {
-        const colorProcessor = new processors.ColorProcessor(new NameColorer());
+        const colorConfig = new ColorConfig();
+        const colorProcessor = new processors.ColorProcessor(colorConfig);
         const originalMessage = createMessage({ 
             sender: "Alice", 
             message: "Test message"

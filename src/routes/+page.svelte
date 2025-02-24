@@ -62,9 +62,7 @@
         bbcodeOutput = bbcodeFormatter.format(coloredLogs);
     }
     function onColorUpdate(name: string, newColor: string) {
-        let newConfig = colorConfig.GetNew();
-        newConfig.colors.set(name, chroma(newColor));
-        colorConfig = newConfig;
+        colorConfig = colorConfig.setColor(name, newColor);
     }
     // 监听颜色配置变化
     $: colorConfig, processedLogs && applyColors();

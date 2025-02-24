@@ -1,5 +1,5 @@
 import { LogProcessor, type Log } from './types';
-import { ColorConfig, GetColor, AssignColors } from './namecolorer';
+import { ColorConfig } from './namecolorer';
 
 // Processor组，处理一个列表里的Processor
 export class ProcessorGroup extends LogProcessor {
@@ -94,13 +94,12 @@ export class SplitMultilineProcessor extends LogProcessor {
 export class ColorProcessor extends LogProcessor {
     constructor(private colorConfig: ColorConfig) {
         super();
-        this.colorConfig = colorConfig;
     }
 
     process(log: Log): Log {
         return log.map(entry => ({
             ...entry,
-            color: GetColor(this.colorConfig, entry.sender)
+            color: this.colorConfig.getColor(entry.sender)
         }));
     }
 }

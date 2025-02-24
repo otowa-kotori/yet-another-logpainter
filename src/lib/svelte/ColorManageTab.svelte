@@ -7,9 +7,9 @@
     export let onColorUpdate: (name: string, newColor: string) => void;
 
     // 获取颜色映射并转换为数组
-    $: senders = Array.from(colorConfig.colors.entries()).map(([name, color]) => ({
+    $: senders = colorConfig.getColorEntries().map(([name, _]) => ({
         name,
-        color
+        color: colorConfig.getColor(name)
     }));
     function updateColor(name: string, newColor: string) {
         console.log(`Updating color for ${name} to ${newColor}`);
