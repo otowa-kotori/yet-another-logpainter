@@ -66,6 +66,29 @@
     }
     // 监听颜色配置变化
     $: colorConfig, processedLogs && applyColors();
+
+    function handleDrop(event: DragEvent) {
+        event.preventDefault();
+        
+        if (event.dataTransfer?.items) {
+            const items = Array.from(event.dataTransfer.items);
+            const textItems = items.filter(item => item.kind === 'file' && item.type.startsWith('text/'));
+            
+            if (textItems.length > 0) {
+                const file = textItems[0].getAsFile();
+                if (file) {
+                    file.text().then(text => {
+                        rawLog = text;
+                        parse_text();
+                    });
+                }
+            }
+        }
+    }
+
+    function handleDragOver(event: DragEvent) {
+        event.preventDefault();
+    }
 </script>
 <link rel="stylesheet" href="pico.min.css">
 
@@ -79,8 +102,10 @@
             <div class="input-section">
                 <textarea 
                     bind:value={rawLog} 
-                    placeholder="在此粘贴QQ记录..."
+                    placeholder="在此粘贴QQ记录，支持拖放txt文件"
                     class="input-textarea"
+                    on:drop={handleDrop}
+                    on:dragover={handleDragOver}
                 ></textarea>
                 <button on:click={parse_text} class="parse-button">转换</button>
             </div>

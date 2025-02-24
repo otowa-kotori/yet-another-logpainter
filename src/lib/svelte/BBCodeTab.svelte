@@ -3,6 +3,16 @@
 </script>
 
 <div class="bbcode-tab">
+    <div class="button-container">
+        <button 
+            on:click={() => {
+                navigator.clipboard.writeText(bbcode);
+            }}
+            class="copy-button"
+        >
+            复制到剪贴板
+        </button>
+    </div>
     <textarea 
         bind:value={bbcode} 
         readonly 

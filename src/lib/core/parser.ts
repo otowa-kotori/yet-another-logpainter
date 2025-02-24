@@ -30,6 +30,8 @@ import { LogParser, type Log } from './types';
 
 export class QQTextParser extends LogParser {
     parse(raw: string): Log {
+        // 将所有换行符归一化为\n
+        raw = raw.replace(/\r\n|\r/g, '\n');
         const blocks = raw.split('\n\n');
         const log: Log = [];
         
