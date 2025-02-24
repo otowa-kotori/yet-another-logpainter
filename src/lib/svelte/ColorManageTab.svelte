@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ColorConfig, ParseColorConfig, ColorConfigToYAML } from '$lib/core/namecolorer';
+    import { ColorConfig, YAMLToColorConfig, ColorConfigToYAML } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
     import { onMount } from 'svelte';
     import { floatingCopy } from '$lib/actions/floatingCopy';
@@ -51,7 +51,7 @@
     function handleImport() {
         const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
         try {
-            const newConfig = ParseColorConfig(textarea.value);
+            const newConfig = YAMLToColorConfig(textarea.value);
             onColorConfigUpdate(newConfig);
         } catch (e) {
             console.error('导入失败:', e);
@@ -63,7 +63,7 @@
         try {
             const text = await readFileWithEncoding(dataTransfer);
             textarea.value = text;
-            const newConfig = ParseColorConfig(text);
+            const newConfig = YAMLToColorConfig(text);
             onColorConfigUpdate(newConfig);
         } catch (e) {
             console.error('导入失败:', e);
@@ -81,6 +81,11 @@
         // 可以添加提示或其他反馈
         console.log('复制成功！');
     }
+
+    function toggleDisabled(name: string, disabled: boolean) {
+        console.log(`Toggling disabled for ${name} to ${disabled}`);
+        onColorConfigUpdate(colorConfig.setDisabled(name, disabled));
+    }
 </script>
 
 <div class="color-manage">
@@ -92,50 +97,59 @@
             {#each senders as sender}
                 <div class="sender-item">
                     <div class="sender-info">
-                        <div class="name-section">
-                            <span class="sender-name" style="color: {sender.color}">{sender.name}</span>
-                            {#if sender.aliases && sender.aliases.length > 0}
-                                <div class="aliases">
-                                    {#each sender.aliases as alias}
-                                        <span class="alias-tag">{alias}</span>
+                        <span class="sender-name" style="color: {sender.color}">{sender.name}</span>
+                        <div class="sender-controls">
+                            <label class="toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={!sender.disabled}
+                                    on:change={(e) => toggleDisabled(sender.name, !e.currentTarget.checked)}
+                                >
+                                <span class="toggle-label">启用</span>
+                            </label>
+                                
+                            <button 
+                                class="color-btn"
+                                style="background-color: {sender.color}"
+                                on:click={() => toggleDropdown(sender.name)}
+                            >选择颜色</button>
+                            {#if activeDropdown === sender.name}
+                                <div class="color-dropdown">
+                                    <button 
+                                        class="color-option"
+                                        on:click={openColorPicker}
+                                    >
+                                        <input 
+                                            type="color" 
+                                            value={sender.color}
+                                            class="color-picker"
+                                            on:input={(e) => {
+                                                updateColor(sender.name, e.currentTarget.value);
+                                            }}
+                                        >
+                                        <span class="color-preview" style="background-color: {sender.color}"></span>
+                                        <span class="color-name">自定义</span>
+                                    </button>
+                                    {#each default_colors as color}
+                                        <button 
+                                            class="color-option"
+                                            on:click={() => {
+                                                updateColor(sender.name, color.color.hex());
+                                                toggleDropdown(sender.name);
+                                            }}
+                                        >
+                                            <span class="color-preview" style="background-color: {color.color.hex()}"></span>
+                                            <span class="color-name">{color.name}</span>
+                                        </button>
                                     {/each}
                                 </div>
                             {/if}
                         </div>
-                        <button 
-                            class="color-btn"
-                            style="background-color: {sender.color}"
-                            on:click={() => toggleDropdown(sender.name)}
-                        >选择颜色</button>
                     </div>
-                    {#if activeDropdown === sender.name}
-                        <div class="color-dropdown">
-                            <button 
-                                class="color-option"
-                                on:click={openColorPicker}
-                            >
-                                <input 
-                                    type="color" 
-                                    value={sender.color}
-                                    class="color-picker"
-                                    on:input={(e) => {
-                                        updateColor(sender.name, e.currentTarget.value);
-                                    }}
-                                >
-                                <span class="color-preview" style="background-color: {sender.color}"></span>
-                                <span class="color-name">自定义</span>
-                            </button>
-                            {#each default_colors as color}
-                                <button 
-                                    class="color-option"
-                                    on:click={() => {
-                                        updateColor(sender.name, color.color.hex());
-                                        toggleDropdown(sender.name);
-                                    }}
-                                >
-                                    <span class="color-preview" style="background-color: {color.color.hex()}"></span>
-                                    <span class="color-name">{color.name}</span>
-                                </button>
+                    {#if sender.aliases && sender.aliases.length > 0}
+                        <div class="aliases">
+                            {#each sender.aliases as alias}
+                                <span class="alias-tag">{alias}</span>
                             {/each}
                         </div>
                     {/if}
@@ -201,41 +215,21 @@
     .sender-info {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         gap: 1rem;
+        margin-bottom: 0.5rem;
     }
 
-    /* 名称部分的样式 */
-    .name-section {
+    .sender-controls {
         display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        flex: 1;
-    }
-
-    .aliases {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-    }
-
-    .alias-tag {
-        font-size: 0.75rem;
-        padding: 0.1rem 0.4rem;
-        background-color: #f0f0f0;
-        border-radius: 3px;
-        color: #666;
-    }
-
-    /* 合并文本样式 */
-    .sender-name,
-    .color-name {
-        color: #333;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .sender-name {
         font-weight: 500;
         font-size: 0.9rem;
+        flex: 1;
     }
 
     .color-name {
@@ -318,5 +312,44 @@
         cursor: pointer;
         font-size: 0.9rem;
         transition: all 0.2s;
+    }
+    .toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .toggle input {
+        margin: 0;
+    }
+
+    .toggle-label {
+        font-size: 0.8rem;
+        color: #666;
+    }
+
+    /* 修改别名样式 */
+    .aliases {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding-top: 0.25rem;
+        border-top: 1px solid #eee;
+    }
+
+    .alias-tag {
+        font-size: 0.75rem;
+        padding: 0.1rem 0.4rem;
+        background-color: #f0f0f0;
+        border-radius: 3px;
+        color: #666;
+    }
+
+    /* 恢复合并的文本样式 */
+    .sender-name,
+    .color-name {
+        color: #333;
     }
 </style> 

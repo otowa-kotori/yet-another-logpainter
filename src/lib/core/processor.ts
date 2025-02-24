@@ -97,10 +97,18 @@ export class ColorProcessor extends LogProcessor {
     }
 
     process(log: Log): Log {
-        return log.map(entry => ({
-            ...entry,
-            sender: this.colorConfig.getStandardName(entry.sender),
-            color: this.colorConfig.getColor(entry.sender)
-        }));
+        return log
+            // 过滤掉禁用的条目
+            .filter(entry => {
+                const standardName = this.colorConfig.getStandardName(entry.sender);
+                const enabled = !this.colorConfig.isDisabled(standardName);
+                return enabled;
+            })
+            // 替换发送者名字和颜色
+            .map(entry => ({
+                ...entry,
+                sender: this.colorConfig.getStandardName(entry.sender),
+                color: this.colorConfig.getColor(entry.sender)
+            }));
     }
 }

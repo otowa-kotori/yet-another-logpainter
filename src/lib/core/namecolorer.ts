@@ -28,13 +28,44 @@ export const default_colors = [
     { color: chroma('silver'), name: '灰色' }
 ];
 
+interface ColorEntryJSON {
+    name: string;
+    color: string;
+    aliases: string[];
+    disabled?: boolean;
+}
+
 // 新增 ColorEntry 类来管理单个颜色的所有信息
 class ColorEntry {
     constructor(
         public readonly name: string,
         public readonly color: chroma.Color,
-        public readonly aliases: string[] = []
+        public readonly aliases: string[] = [],
+        public readonly disabled: boolean
     ) {}
+
+    static fromJSON(json: ColorEntryJSON): ColorEntry {
+        return new ColorEntry(
+            json.name, 
+            chroma(json.color), 
+            json.aliases, 
+            json.disabled ?? false
+        );
+    }
+
+    toJSON(): ColorEntryJSON {
+        const result: ColorEntryJSON = {
+            name: this.name,
+            color: this.color.hex(),
+            aliases: this.aliases
+        };
+        
+        if (this.disabled) {
+            result.disabled = true;
+        }
+        
+        return result;
+    }
 }
 
 export class ColorConfig {
@@ -84,7 +115,7 @@ export class ColorConfig {
             if (existingEntry) {
                 // 合并别名，去重
                 const mergedAliases = [...new Set([...existingEntry.aliases, ...entry.aliases])];
-                newEntries.set(name, new ColorEntry(name, entry.color, mergedAliases));
+                newEntries.set(name, new ColorEntry(name, entry.color, mergedAliases, entry.disabled));
             } else {
                 newEntries.set(name, entry);
             }
@@ -105,10 +136,31 @@ export class ColorConfig {
         newEntries.set(name, new ColorEntry(
             name,
             chromaColor,
-            existingEntry?.aliases ?? []
+            existingEntry?.aliases ?? [],
+            existingEntry?.disabled ?? false
         ));
         
         return new ColorConfig(newEntries);
+    }
+
+    setDisabled(name: string, disabled: boolean): ColorConfig {
+        const existingEntry = this.entries.get(name);
+        if (!existingEntry) return this;
+        
+        const newEntries = new Map(this.entries);
+        newEntries.set(name, new ColorEntry(
+            name,
+            existingEntry.color,
+            existingEntry.aliases,
+            disabled
+        ));
+        
+        return new ColorConfig(newEntries);
+    }
+
+    // 获取是否被禁用
+    isDisabled(name: string): boolean {
+        return this.entries.get(name)?.disabled ?? false;
     }
 }
 
@@ -119,7 +171,7 @@ export function CreateColorConfig(
     aliases: string[] = []
 ): ColorConfig {
     const chromaColor = typeof color === 'string' ? chroma(color) : color;
-    const entries = new Map([[name, new ColorEntry(name, chromaColor, aliases)]]);
+    const entries = new Map([[name, new ColorEntry(name, chromaColor, aliases, false)]]);
     return new ColorConfig(entries);
 }
 
@@ -144,16 +196,24 @@ export function ParseColorConfig(text: string): ColorConfig {
         const aliasLine = lines[i + 1];
         const aliases = aliasLine ? aliasLine.split('$').map(a => a.trim()).filter(a => a) : [];
         
-        entries.set(name, new ColorEntry(name, color, aliases));
+        entries.set(name, new ColorEntry(name, color, aliases, false));
     }
 
     return new ColorConfig(entries);
 }
 
-/** 将ColorConfig转化成YAML格式，使用yaml库
- */
+// 将YAML格式转化成ColorConfig，使用yaml库
+export function YAMLToColorConfig(yamltext: string): ColorConfig {
+    const entries = yaml.parse(yamltext);
+    return new ColorConfig(new Map(
+        entries.map((json:any) => [json.name, ColorEntry.fromJSON(json)])
+    ));
+}
+
+// 将ColorConfig转化成YAML格式，使用yaml库
 export function ColorConfigToYAML(config: ColorConfig): string {
-    return yaml.stringify(config.getEntries());
+    const entries = config.getEntries().map(entry => entry.toJSON());
+    return yaml.stringify(entries);
 }
 
 const MIN_DIFF = 20;
