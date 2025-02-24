@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ColorConfig, ParseColorConfig, ColorConfigToText } from '$lib/core/namecolorer';
+    import { ColorConfig, ParseColorConfig, ColorConfigToYAML } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
     import { onMount } from 'svelte';
     import { floatingCopy } from '$lib/actions/floatingCopy';
@@ -10,11 +10,7 @@
     export let onColorConfigUpdate: (newConfig: ColorConfig) => void;
 
     // 获取颜色映射并转换为数组
-    $: senders = colorConfig.getColorEntries().map(([name, _]) => ({
-        name,
-        color: colorConfig.getColor(name),
-        aliases: colorConfig.getAliases(name)
-    }));
+    $: senders = colorConfig.getEntries();
     function updateColor(name: string, newColor: string) {
         console.log(`Updating color for ${name} to ${newColor}`);
         onColorConfigUpdate(colorConfig.setColor(name, newColor));
@@ -77,7 +73,7 @@
     // 处理导出
     function handleExport() {
         const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
-        const text = ColorConfigToText(colorConfig);
+        const text = ColorConfigToYAML(colorConfig);
         textarea.value = text;
     }
 

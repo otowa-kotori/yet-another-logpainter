@@ -5,6 +5,7 @@
  */
 
 import chroma from 'chroma-js';
+import yaml from 'yaml';
 
 // 默认颜色列表
 export const default_colors = [
@@ -27,110 +28,107 @@ export const default_colors = [
     { color: chroma('silver'), name: '灰色' }
 ];
 
-export class ColorConfig {
-    private colors: Map<string, chroma.Color>;
-    private aliases_to_name: Map<string, string>;
-    private aliases: Map<string, string[]>;
-
+// 新增 ColorEntry 类来管理单个颜色的所有信息
+class ColorEntry {
     constructor(
-        colors?: Map<string, chroma.Color>,
-        aliases?: Map<string, string[]>
-    ) {
-        this.colors = colors ?? new Map();
-        this.aliases = aliases ?? new Map();
+        public readonly name: string,
+        public readonly color: chroma.Color,
+        public readonly aliases: string[] = []
+    ) {}
+}
+
+export class ColorConfig {
+    private readonly entries: Map<string, ColorEntry>;
+    private readonly aliases_to_name: Map<string, string>;
+
+    constructor(entries?: Map<string, ColorEntry>) {
+        this.entries = entries ?? new Map();
         
-        this.aliases_to_name = new Map();
-        this.aliases.forEach((aliasList, standardName) => {
-            aliasList.forEach(alias => {
-                this.aliases_to_name.set(alias, standardName);
+        // 重构别名映射的构建
+        let aliases_to_name = new Map();
+        this.entries.forEach(entry => {
+            entry.aliases.forEach(alias => {
+                aliases_to_name.set(alias, entry.name);
             });
-            this.aliases_to_name.set(standardName, standardName);
+            aliases_to_name.set(entry.name, entry.name);
         });
+        this.aliases_to_name = aliases_to_name;
     }
 
     getAliases(name: string): string[] {
-        return this.aliases.get(name) ?? [];
+        return this.entries.get(name)?.aliases ?? [];
     }
 
-    // 获取某个名字对应的颜色
     getColor(name: string): chroma.Color {
         const standardName = this.getStandardName(name);
-        return this.colors.get(standardName) ?? chroma('black');
+        return this.entries.get(standardName)?.color ?? chroma('black');
     }
 
     hasColor(name: string): boolean {
-        return this.colors.has(name);
+        return this.entries.has(name);
     }
 
     getAllColors(): chroma.Color[] {
-        return Array.from(this.colors.values());
+        return Array.from(this.entries.values()).map(entry => entry.color);
     }
 
-    // 获取名字的标准形式（通过别名映射）
     getStandardName(name: string): string {
         return this.aliases_to_name.get(name) ?? name;
     }
 
-    // 创建新的配置
     merge(other: ColorConfig): ColorConfig {
-        const newColors = new Map(this.colors);
-        const newAliases = new Map(this.aliases);
-
-        other.colors.forEach((color, name) => {
-            newColors.set(name, color);
+        const newEntries = new Map(this.entries);
+        
+        other.entries.forEach((entry, name) => {
+            const existingEntry = newEntries.get(name);
+            if (existingEntry) {
+                // 合并别名，去重
+                const mergedAliases = [...new Set([...existingEntry.aliases, ...entry.aliases])];
+                newEntries.set(name, new ColorEntry(name, entry.color, mergedAliases));
+            } else {
+                newEntries.set(name, entry);
+            }
         });
-        other.aliases.forEach((aliasList, name) => {
-            const existingAliases = newAliases.get(name) ?? [];
-            newAliases.set(name, [...new Set([...existingAliases, ...aliasList])]);
-        });
 
-        return new ColorConfig(newColors, newAliases);
+        return new ColorConfig(newEntries);
     }
 
-    // 获取所有名字和颜色
-    getColorEntries(): [string, chroma.Color][] {
-        return Array.from(this.colors.entries());
+    getEntries(): ColorEntry[] {
+        return Array.from(this.entries.values());
     }
 
     setColor(name: string, color: chroma.Color | string): ColorConfig {
-        const newColors = new Map(this.colors);
-        newColors.set(name, typeof color === 'string' ? chroma(color) : color);
-        return new ColorConfig(newColors, this.aliases);
+        const chromaColor = typeof color === 'string' ? chroma(color) : color;
+        const existingEntry = this.entries.get(name);
+        const newEntries = new Map(this.entries);
+        
+        newEntries.set(name, new ColorEntry(
+            name,
+            chromaColor,
+            existingEntry?.aliases ?? []
+        ));
+        
+        return new ColorConfig(newEntries);
     }
 }
 
-// 创建单个名字的配置
+// 修改创建单个颜色配置的函数
 export function CreateColorConfig(
     name: string,
     color: chroma.Color | string,
     aliases: string[] = []
 ): ColorConfig {
     const chromaColor = typeof color === 'string' ? chroma(color) : color;
-    const newColors = new Map([[name, chromaColor]]);
-    const newAliases = new Map([[name, aliases]]);
-    return new ColorConfig(newColors, newAliases);
+    const entries = new Map([[name, new ColorEntry(name, chromaColor, aliases)]]);
+    return new ColorConfig(entries);
 }
 
-/**  将以下格式的文本，转化成ColorConfig
- * 格式范例：
- * Alice red
- * 爱丽丝$小爱$alice
- * Bob blue
- * 鲍勃$bob
- * 每个定义包含了颜色行和别名行
- * 颜色行用空格分割，第一个为名字，第二个为颜色。
- * 别名行用$分割，分别代表不同的别名。
- * 如果没有别名，别名行为空
- * 如果输入为奇数行，则认为最后空了一个别名行。
- */
+// 修改解析函数
 export function ParseColorConfig(text: string): ColorConfig {
     const lines = text.trim().split('\n').map(line => line.trim());
-    const colors = new Map<string, chroma.Color>();
-    const aliases = new Map<string, string[]>();
+    const entries = new Map<string, ColorEntry>();
 
-    // 每两行处理一组配置
     for (let i = 0; i < lines.length; i += 2) {
-        // 处理颜色行
         const colorLine = lines[i];
         const [name, colorStr] = colorLine.split(/\s+/);
         if (!name || !colorStr) continue;
@@ -139,45 +137,23 @@ export function ParseColorConfig(text: string): ColorConfig {
         try {
             color = chroma(colorStr);
         } catch (e) {
-            // 如果颜色解析失败，使用黑色作为默认值
             color = chroma('black');
             console.warn(`Invalid color format for ${name}: ${colorStr}, using black instead`);
         }
-        colors.set(name, color);
 
-        // 处理别名行（如果存在且不为空）
         const aliasLine = lines[i + 1];
-        if (aliasLine) {
-            const aliasList = aliasLine.split('$').map(a => a.trim()).filter(a => a);
-            if (aliasList.length > 0) {
-                aliases.set(name, aliasList);
-            }
-        }
+        const aliases = aliasLine ? aliasLine.split('$').map(a => a.trim()).filter(a => a) : [];
+        
+        entries.set(name, new ColorEntry(name, color, aliases));
     }
 
-    return new ColorConfig(colors, aliases);
+    return new ColorConfig(entries);
 }
 
-/** 将ColorConfig转化成文本
- * 格式范例参见ParseColorConfig
+/** 将ColorConfig转化成YAML格式，使用yaml库
  */
-export function ColorConfigToText(config: ColorConfig): string {
-    let result = '';
-    const entries = config.getColorEntries();
-    
-    for (const [name, color] of entries) {
-        // 添加颜色行
-        result += `${name} ${color.hex()}\n`;
-        
-        // 添加别名行
-        const aliasesList = config.getAliases(name);
-        if (aliasesList.length > 0) {
-            result += aliasesList.join('$');
-        }
-        result += '\n';
-    }
-    
-    return result;
+export function ColorConfigToYAML(config: ColorConfig): string {
+    return yaml.stringify(config.getEntries());
 }
 
 const MIN_DIFF = 20;

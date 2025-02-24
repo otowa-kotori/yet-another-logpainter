@@ -74,16 +74,42 @@ describe("ColorConfig", () => {
         expect(aliceConfig.getStandardName("Bob")).toBe("Bob");
     });
 
-    it("should maintain aliases when merging configs", () => {
+    it("should maintain color assignments and aliases when merging configs", () => {
         const aliceConfig = CreateColorConfig("Alice", "red", ["A", "艾丽丝"]);
         const bobConfig = CreateColorConfig("Bob", "blue", ["B", "鲍勃"]);
         
         const mergedConfig = aliceConfig.merge(bobConfig);
         
+        expect(mergedConfig.getColor("Alice").hex()).toBe(chroma("red").hex());
+        expect(mergedConfig.getColor("Bob").hex()).toBe(chroma("blue").hex());
+        
         expect(mergedConfig.getAliases("Alice")).toEqual(["A", "艾丽丝"]);
         expect(mergedConfig.getAliases("Bob")).toEqual(["B", "鲍勃"]);
+        
         expect(mergedConfig.getColor("艾丽丝").hex()).toBe(chroma("red").hex());
         expect(mergedConfig.getColor("鲍勃").hex()).toBe(chroma("blue").hex());
+    });
+
+    it("should merge aliases without duplicates", () => {
+        const config1 = CreateColorConfig("Alice", "red", ["A", "艾丽丝"]);
+        const config2 = CreateColorConfig("Alice", "blue", ["A", "alice"]);
+        
+        const mergedConfig = config1.merge(config2);
+        
+        expect(mergedConfig.getAliases("Alice")).toEqual(["A", "艾丽丝", "alice"]);
+        expect(mergedConfig.getColor("Alice").hex()).toBe(chroma("blue").hex());
+    });
+
+    it("should return correct entries", () => {
+        const config = CreateColorConfig("Alice", "red", ["A", "艾丽丝"]);
+        const entries = config.getEntries();
+        
+        expect(entries.length).toBe(1);
+        const entry = entries[0];
+        
+        expect(entry.name).toBe("Alice");
+        expect(entry.color.hex()).toBe(chroma("red").hex());
+        expect(entry.aliases).toEqual(["A", "艾丽丝"]);
     });
 });
 
@@ -191,7 +217,25 @@ describe("ParseColorConfig", () => {
         const config = ParseColorConfig(input);
         
         // 应该跳过没有颜色值的行
-        expect(config.getColorEntries().length).toBe(0);
+        expect(config.getEntries().length).toBe(0);
+    });
+
+    it("should create correct ColorEntry structure", () => {
+        const input = `
+            Alice red
+            艾丽丝$A$alice
+        `;
+        const config = ParseColorConfig(input);
+        
+        // 验证标准名称的颜色和别名
+        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
+        expect(config.getAliases("Alice")).toEqual(["艾丽丝", "A", "alice"]);
+        
+        // 验证所有别名都指向相同的颜色
+        const aliceColor = config.getColor("Alice").hex();
+        expect(config.getColor("艾丽丝").hex()).toBe(aliceColor);
+        expect(config.getColor("A").hex()).toBe(aliceColor);
+        expect(config.getColor("alice").hex()).toBe(aliceColor);
     });
 });
 
