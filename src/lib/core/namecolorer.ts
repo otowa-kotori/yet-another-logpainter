@@ -211,7 +211,7 @@ export function YAMLToColorConfig(yamltext: string): ColorConfig {
 }
 
 // 将ColorConfig转化成YAML格式，使用yaml库
-export function ColorConfigToYAML(config: ColorConfig): string {
+export function ColorConfigToYAMLText(config: ColorConfig): string {
     const entries = config.getEntries().map(entry => entry.toJSON());
     return yaml.stringify(entries);
 }

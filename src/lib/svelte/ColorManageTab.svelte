@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ColorConfig, YAMLToColorConfig, ColorConfigToYAML } from '$lib/core/namecolorer';
+    import { ColorConfig, YAMLToColorConfig, ColorConfigToYAMLText } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
     import { onMount } from 'svelte';
     import { floatingCopy } from '$lib/actions/floatingCopy';
@@ -73,7 +73,7 @@
     // 处理导出
     function handleExport() {
         const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
-        const text = ColorConfigToYAML(colorConfig);
+        const text = ColorConfigToYAMLText(colorConfig);
         textarea.value = text;
     }
 

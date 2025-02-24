@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { ColorConfig, AssignColors, CreateColorConfig, default_colors } from '../lib/core/namecolorer';
+import { ColorConfig, AssignColors, CreateColorConfig, default_colors, YAMLToColorConfig, ColorConfigToYAMLText } from '../lib/core/namecolorer';
 import chroma from 'chroma-js';
-import { ParseColorConfig } from '../lib/core/namecolorer';
-import { ColorConfigToText } from '../lib/core/namecolorer';
+import yaml from 'yaml';    
 
 describe("ColorConfig", () => {
     it("should return first default color for first name", () => {
@@ -113,168 +112,53 @@ describe("ColorConfig", () => {
     });
 });
 
-describe("ParseColorConfig", () => {
-    it("should parse basic color config without aliases", () => {
-        const input = `
-            Alice red
-            
-            Bob blue
-            
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getColor("Bob").hex()).toBe(chroma("blue").hex());
-        expect(config.getAliases("Alice")).toEqual([]);
-        expect(config.getAliases("Bob")).toEqual([]);
-    });
 
-    it("should parse color config with multiple aliases", () => {
-        const input = `
-            Alice red
-            艾丽丝$A$alice
-            Bob blue
-            鲍勃$B$bob
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getColor("艾丽丝").hex()).toBe(chroma("red").hex());
-        expect(config.getColor("A").hex()).toBe(chroma("red").hex());
-        expect(config.getAliases("Alice")).toEqual(["艾丽丝", "A", "alice"]);
-        
-        expect(config.getColor("Bob").hex()).toBe(chroma("blue").hex());
-        expect(config.getColor("鲍勃").hex()).toBe(chroma("blue").hex());
-        expect(config.getAliases("Bob")).toEqual(["鲍勃", "B", "bob"]);
-    });
-
-    it("should parse color config with single alias", () => {
-        const input = `
-            Alice red
-            艾丽丝
-            Bob blue
-            鲍勃
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getColor("艾丽丝").hex()).toBe(chroma("red").hex());
-        expect(config.getAliases("Alice")).toEqual(["艾丽丝"]);
-        
-        expect(config.getColor("Bob").hex()).toBe(chroma("blue").hex());
-        expect(config.getColor("鲍勃").hex()).toBe(chroma("blue").hex());
-        expect(config.getAliases("Bob")).toEqual(["鲍勃"]);
-    });
-
-    it("should handle invalid color format", () => {
-        const input = `
-            Alice invalid_color
-            艾丽丝
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("black").hex());
-        expect(config.getColor("艾丽丝").hex()).toBe(chroma("black").hex());
-        expect(config.getAliases("Alice")).toEqual(["艾丽丝"]);
-    });
-
-    it("should handle odd number of lines", () => {
-        const input = `
-            Alice red
-            艾丽丝
-            Bob blue
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getAliases("Alice")).toEqual(["艾丽丝"]);
-        expect(config.getColor("Bob").hex()).toBe(chroma("blue").hex());
-        expect(config.getAliases("Bob")).toEqual([]);
-    });
-
-    it("should ignore empty alias lines", () => {
-        const input = `
-            Alice red
-
-            Bob blue
-            
-        `;
-        const config = ParseColorConfig(input);
-        
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getAliases("Alice")).toEqual([]);
-        expect(config.getColor("Bob").hex()).toBe(chroma("blue").hex());
-        expect(config.getAliases("Bob")).toEqual([]);
-    });
-
-    it("should handle malformed color lines", () => {
-        const input = `
-            Alice
-            艾丽丝
-            only_name
-            别名
-        `;
-        const config = ParseColorConfig(input);
-        
-        // 应该跳过没有颜色值的行
-        expect(config.getEntries().length).toBe(0);
-    });
-
-    it("should create correct ColorEntry structure", () => {
-        const input = `
-            Alice red
-            艾丽丝$A$alice
-        `;
-        const config = ParseColorConfig(input);
-        
-        // 验证标准名称的颜色和别名
-        expect(config.getColor("Alice").hex()).toBe(chroma("red").hex());
-        expect(config.getAliases("Alice")).toEqual(["艾丽丝", "A", "alice"]);
-        
-        // 验证所有别名都指向相同的颜色
-        const aliceColor = config.getColor("Alice").hex();
-        expect(config.getColor("艾丽丝").hex()).toBe(aliceColor);
-        expect(config.getColor("A").hex()).toBe(aliceColor);
-        expect(config.getColor("alice").hex()).toBe(aliceColor);
-    });
-});
-
-describe("ColorConfigToText", () => {
+describe("YAML Serialization", () => {
     it("should convert basic config without aliases", () => {
         const config = CreateColorConfig("Alice", "#FF0000");
-        const text = ColorConfigToText(config);
-        const expected = "Alice #ff0000\n\n";
-        expect(text).toBe(expected);
+        const yamltext = ColorConfigToYAMLText(config);
+        const expected = [
+            {
+                name: "Alice",
+                color: "#ff0000",
+                aliases: []
+            }
+        ];
+        expect(yamltext).toBe(yaml.stringify(expected));
     });
 
-    it("should convert config with single alias", () => {
+    it("should convert config with aliases", () => {
+        const config = CreateColorConfig("Alice", "#FF0000", ["艾丽丝", "A"]);
+        const yamltext = ColorConfigToYAMLText(config);
+        const expected = [
+            {
+                name: "Alice",
+                color: "#ff0000",
+                aliases: ["艾丽丝", "A"]
+            }
+        ];
+        expect(yamltext).toBe(yaml.stringify(expected));
+    });
+
+    it("should handle disabled entries", () => {
         const config = CreateColorConfig("Alice", "#FF0000", ["艾丽丝"]);
-        const text = ColorConfigToText(config);
-        const expected = "Alice #ff0000\n艾丽丝\n";
-        expect(text).toBe(expected);
-    });
-
-    it("should convert config with multiple aliases", () => {
-        const config = CreateColorConfig("Alice", "#FF0000", ["艾丽丝", "A", "alice"]);
-        const text = ColorConfigToText(config);
-        const expected = "Alice #ff0000\n艾丽丝$A$alice\n";
-        expect(text).toBe(expected);
-    });
-
-    it("should convert merged configs", () => {
-        const aliceConfig = CreateColorConfig("Alice", "#FF0000", ["艾丽丝"]);
-        const bobConfig = CreateColorConfig("Bob", "#0000FF", ["鲍勃"]);
-        const mergedConfig = aliceConfig.merge(bobConfig);
-        
-        const text = ColorConfigToText(mergedConfig);
-        const expected = "Alice #ff0000\n艾丽丝\nBob #0000ff\n鲍勃\n";
-        expect(text).toBe(expected);
+        const disabledConfig = config.setDisabled("Alice", true);
+        const yamltext = ColorConfigToYAMLText(disabledConfig);
+        const expected = [
+            {
+                name: "Alice",
+                color: "#ff0000",
+                aliases: ["艾丽丝"],
+                disabled: true
+            }
+        ];
+        expect(yamltext).toBe(yaml.stringify(expected));
     });
 
     it("should handle round trip conversion", () => {
         const originalConfig = CreateColorConfig("Alice", "#FF0000", ["艾丽丝", "A"]);
-        const text = ColorConfigToText(originalConfig);
-        const parsedConfig = ParseColorConfig(text);
+        const yamltext = ColorConfigToYAMLText(originalConfig);
+        const parsedConfig = YAMLToColorConfig(yamltext);
         
         // 验证颜色是否一致
         expect(parsedConfig.getColor("Alice").hex()).toBe(originalConfig.getColor("Alice").hex());
@@ -282,5 +166,19 @@ describe("ColorConfigToText", () => {
         
         // 验证别名是否一致
         expect(parsedConfig.getAliases("Alice")).toEqual(originalConfig.getAliases("Alice"));
+    });
+
+    it("should handle multiple entries", () => {
+        const aliceConfig = CreateColorConfig("Alice", "#FF0000", ["艾丽丝"]);
+        const bobConfig = CreateColorConfig("Bob", "#0000FF", ["鲍勃"]);
+        const mergedConfig = aliceConfig.merge(bobConfig);
+        
+        const yamltext = ColorConfigToYAMLText(mergedConfig);
+        const parsedConfig = YAMLToColorConfig(yamltext);
+        
+        expect(parsedConfig.getColor("Alice").hex()).toBe("#ff0000");
+        expect(parsedConfig.getColor("Bob").hex()).toBe("#0000ff");
+        expect(parsedConfig.getAliases("Alice")).toEqual(["艾丽丝"]);
+        expect(parsedConfig.getAliases("Bob")).toEqual(["鲍勃"]);
     });
 }); 
