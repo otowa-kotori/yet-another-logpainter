@@ -2,9 +2,9 @@
     import { ColorConfig, YAMLToColorConfig, ColorConfigToYAMLText } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
     import { onMount } from 'svelte';
-    import { floatingCopy } from '$lib/actions/floatingCopy';
     import { dropzone } from '$lib/actions/dropzone';
     import { readFileWithEncoding } from '$lib/utils/fileUtils';
+    import FloatingCopy from '$lib/svelte/FloatingCopy.svelte';
 
     export let colorConfig: ColorConfig;
     export let onColorConfigUpdate: (newConfig: ColorConfig) => void;
@@ -158,18 +158,17 @@
         </div>
     {/if}
     <h3>颜色导入/导出</h3>
-    <textarea 
-        class="common-textarea" 
-        id="color-config-textarea"
-        placeholder="在此粘贴颜色配置文本进行导入，或点击导出按钮将当前配置导出到此处，支持拖放txt文件"
-        use:floatingCopy={{
-            buttonText: '复制',
-            onCopy: handleCopySuccess
-        }}
-        use:dropzone={{
-            onDrop: handleFileDrop
-        }}
-    ></textarea>
+    <FloatingCopy buttonText="复制" onCopy={handleCopySuccess}>
+        <textarea 
+            data-floating-copy-content
+            class="common-textarea"
+            id="color-config-textarea"
+            placeholder="在此粘贴颜色配置文本进行导入，或点击导出按钮将当前配置导出到此处，支持拖放txt文件"
+            use:dropzone={{
+                onDrop: handleFileDrop
+            }}
+        ></textarea>
+    </FloatingCopy>
     <div class="button-group">
         <button class="import-btn" on:click={handleImport}>导入</button>
         <button class="export-btn" on:click={handleExport}>导出</button>
