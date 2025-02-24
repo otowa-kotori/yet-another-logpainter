@@ -30,13 +30,26 @@ export const default_colors = [
 export class ColorConfig {
     private colors: Map<string, chroma.Color>;
     private aliases_to_name: Map<string, string>;
+    private aliases: Map<string, string[]>;
 
     constructor(
         colors?: Map<string, chroma.Color>,
-        aliases_to_name?: Map<string, string>
+        aliases?: Map<string, string[]>
     ) {
         this.colors = colors ?? new Map();
-        this.aliases_to_name = aliases_to_name ?? new Map();
+        this.aliases = aliases ?? new Map();
+        
+        this.aliases_to_name = new Map();
+        this.aliases.forEach((aliasList, standardName) => {
+            aliasList.forEach(alias => {
+                this.aliases_to_name.set(alias, standardName);
+            });
+            this.aliases_to_name.set(standardName, standardName);
+        });
+    }
+
+    getAliases(name: string): string[] {
+        return this.aliases.get(name) ?? [];
     }
 
     // 获取某个名字对应的颜色
@@ -61,13 +74,14 @@ export class ColorConfig {
     // 创建新的配置
     merge(other: ColorConfig): ColorConfig {
         const newColors = new Map(this.colors);
-        const newAliases = new Map(this.aliases_to_name);
+        const newAliases = new Map(this.aliases);
 
         other.colors.forEach((color, name) => {
             newColors.set(name, color);
         });
-        other.aliases_to_name.forEach((standardName, alias) => {
-            newAliases.set(alias, standardName);
+        other.aliases.forEach((aliasList, name) => {
+            const existingAliases = newAliases.get(name) ?? [];
+            newAliases.set(name, [...new Set([...existingAliases, ...aliasList])]);
         });
 
         return new ColorConfig(newColors, newAliases);
@@ -81,7 +95,7 @@ export class ColorConfig {
     setColor(name: string, color: chroma.Color | string): ColorConfig {
         const newColors = new Map(this.colors);
         newColors.set(name, typeof color === 'string' ? chroma(color) : color);
-        return new ColorConfig(newColors, this.aliases_to_name);
+        return new ColorConfig(newColors, this.aliases);
     }
 }
 
@@ -92,13 +106,78 @@ export function CreateColorConfig(
     aliases: string[] = []
 ): ColorConfig {
     const chromaColor = typeof color === 'string' ? chroma(color) : color;
-    
     const newColors = new Map([[name, chromaColor]]);
-    const newAliases = new Map(
-        [name, ...aliases].map(alias => [alias, name])
-    );
-
+    const newAliases = new Map([[name, aliases]]);
     return new ColorConfig(newColors, newAliases);
+}
+
+/**  将以下格式的文本，转化成ColorConfig
+ * 格式范例：
+ * Alice red
+ * 爱丽丝$小爱$alice
+ * Bob blue
+ * 鲍勃$bob
+ * 每个定义包含了颜色行和别名行
+ * 颜色行用空格分割，第一个为名字，第二个为颜色。
+ * 别名行用$分割，分别代表不同的别名。
+ * 如果没有别名，别名行为空
+ * 如果输入为奇数行，则认为最后空了一个别名行。
+ */
+export function ParseColorConfig(text: string): ColorConfig {
+    const lines = text.trim().split('\n').map(line => line.trim());
+    const colors = new Map<string, chroma.Color>();
+    const aliases = new Map<string, string[]>();
+
+    // 每两行处理一组配置
+    for (let i = 0; i < lines.length; i += 2) {
+        // 处理颜色行
+        const colorLine = lines[i];
+        const [name, colorStr] = colorLine.split(/\s+/);
+        if (!name || !colorStr) continue;
+
+        let color: chroma.Color;
+        try {
+            color = chroma(colorStr);
+        } catch (e) {
+            // 如果颜色解析失败，使用黑色作为默认值
+            color = chroma('black');
+            console.warn(`Invalid color format for ${name}: ${colorStr}, using black instead`);
+        }
+        colors.set(name, color);
+
+        // 处理别名行（如果存在且不为空）
+        const aliasLine = lines[i + 1];
+        if (aliasLine) {
+            const aliasList = aliasLine.split('$').map(a => a.trim()).filter(a => a);
+            if (aliasList.length > 0) {
+                aliases.set(name, aliasList);
+            }
+        }
+    }
+
+    return new ColorConfig(colors, aliases);
+}
+
+/** 将ColorConfig转化成文本
+ * 格式范例参见ParseColorConfig
+ */
+export function ColorConfigToText(config: ColorConfig): string {
+    let result = '';
+    const entries = config.getColorEntries();
+    
+    for (const [name, color] of entries) {
+        // 添加颜色行
+        result += `${name} ${color.hex()}\n`;
+        
+        // 添加别名行
+        const aliasesList = config.getAliases(name);
+        if (aliasesList.length > 0) {
+            result += aliasesList.join('$');
+        }
+        result += '\n';
+    }
+    
+    return result;
 }
 
 const MIN_DIFF = 20;
@@ -108,7 +187,9 @@ export function AssignColors(config: ColorConfig, names: string[]): ColorConfig 
     let newConfig = config;
 
     for (const name of names) {
-        if (newConfig.hasColor(name)) continue;
+        // 获取标准名称并检查是否已有颜色
+        const standardName = newConfig.getStandardName(name);
+        if (newConfig.hasColor(standardName)) continue;
 
         // 如果没有已使用的颜色，直接使用第一个默认颜色
         const usedColors = newConfig.getAllColors();

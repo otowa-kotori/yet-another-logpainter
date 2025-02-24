@@ -1,19 +1,23 @@
 <script lang="ts">
-    import { ColorConfig } from '$lib/core/namecolorer';
+    import { ColorConfig, ParseColorConfig, ColorConfigToText } from '$lib/core/namecolorer';
     import { default_colors } from '$lib/core/namecolorer';
     import { onMount } from 'svelte';
+    import { floatingCopy } from '$lib/actions/floatingCopy';
+    import { dropzone } from '$lib/actions/dropzone';
+    import { readFileWithEncoding } from '$lib/utils/fileUtils';
 
     export let colorConfig: ColorConfig;
-    export let onColorUpdate: (name: string, newColor: string) => void;
+    export let onColorConfigUpdate: (newConfig: ColorConfig) => void;
 
     // 获取颜色映射并转换为数组
     $: senders = colorConfig.getColorEntries().map(([name, _]) => ({
         name,
-        color: colorConfig.getColor(name)
+        color: colorConfig.getColor(name),
+        aliases: colorConfig.getAliases(name)
     }));
     function updateColor(name: string, newColor: string) {
         console.log(`Updating color for ${name} to ${newColor}`);
-        onColorUpdate(name, newColor);
+        onColorConfigUpdate(colorConfig.setColor(name, newColor));
     }
 
     // 控制下拉菜单的显示
@@ -46,6 +50,41 @@
             document.removeEventListener('click', handleClickOutside);
         };
     });
+
+    // 处理导入
+    function handleImport() {
+        const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
+        try {
+            const newConfig = ParseColorConfig(textarea.value);
+            onColorConfigUpdate(newConfig);
+        } catch (e) {
+            console.error('导入失败:', e);
+            alert('导入失败，请检查格式是否正确');
+        }
+    }
+    async function handleFileDrop(dataTransfer: DataTransfer) {
+        const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
+        try {
+            const text = await readFileWithEncoding(dataTransfer);
+            textarea.value = text;
+            const newConfig = ParseColorConfig(text);
+            onColorConfigUpdate(newConfig);
+        } catch (e) {
+            console.error('导入失败:', e);
+            alert(e instanceof Error ? e.message : '导入失败，请检查格式是否正确');
+        }
+    }
+    // 处理导出
+    function handleExport() {
+        const textarea = document.getElementById('color-config-textarea') as HTMLTextAreaElement;
+        const text = ColorConfigToText(colorConfig);
+        textarea.value = text;
+    }
+
+    function handleCopySuccess() {
+        // 可以添加提示或其他反馈
+        console.log('复制成功！');
+    }
 </script>
 
 <div class="color-manage">
@@ -57,7 +96,16 @@
             {#each senders as sender}
                 <div class="sender-item">
                     <div class="sender-info">
-                        <span class="sender-name" style="color: {sender.color}">{sender.name}</span>
+                        <div class="name-section">
+                            <span class="sender-name" style="color: {sender.color}">{sender.name}</span>
+                            {#if sender.aliases && sender.aliases.length > 0}
+                                <div class="aliases">
+                                    {#each sender.aliases as alias}
+                                        <span class="alias-tag">{alias}</span>
+                                    {/each}
+                                </div>
+                            {/if}
+                        </div>
                         <button 
                             class="color-btn"
                             style="background-color: {sender.color}"
@@ -99,10 +147,23 @@
             {/each}
         </div>
     {/if}
-    <h3>颜色导入/导出(未实现)</h3>
-    <textarea class="input-textarea" id="color-config-textarea"></textarea>
-    <button class="import-btn">导入</button>
-    <button class="export-btn">导出</button>
+    <h3>颜色导入/导出</h3>
+    <textarea 
+        class="common-textarea" 
+        id="color-config-textarea"
+        placeholder="在此粘贴颜色配置文本进行导入，或点击导出按钮将当前配置导出到此处，支持拖放txt文件"
+        use:floatingCopy={{
+            buttonText: '复制',
+            onCopy: handleCopySuccess
+        }}
+        use:dropzone={{
+            onDrop: handleFileDrop
+        }}
+    ></textarea>
+    <div class="button-group">
+        <button class="import-btn" on:click={handleImport}>导入</button>
+        <button class="export-btn" on:click={handleExport}>导出</button>
+    </div>
 </div>
 
 <style>
@@ -137,14 +198,37 @@
 
     .sender-item {
         position: relative;
-        padding: 0.75rem;
+        padding: 1rem;
     }
 
     /* 发送者信息布局 */
     .sender-info {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    /* 名称部分的样式 */
+    .name-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        flex: 1;
+    }
+
+    .aliases {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .alias-tag {
+        font-size: 0.75rem;
+        padding: 0.1rem 0.4rem;
+        background-color: #f0f0f0;
+        border-radius: 3px;
+        color: #666;
     }
 
     /* 合并文本样式 */
@@ -225,14 +309,18 @@
         pointer-events: none;
     }
 
-    .input-textarea {
-        width: 100%;
-        min-height: 150px;
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .import-btn,
+    .export-btn {
+        padding: 0.5rem 1rem;
         border-radius: 4px;
-        resize: vertical;
-        font-size: 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s;
     }
 </style> 

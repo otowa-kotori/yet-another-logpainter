@@ -1,0 +1,10 @@
+.common-textarea {
+    width: 100%;
+    min-height: 150px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+    font-size: 0.8rem;
+}

@@ -171,4 +171,5 @@ describe("ColorProcessor", () => {
         expect(result.message).toBe(originalMessage.message);
         expect(result.sender).toBe(originalMessage.sender);
     });
+    
 });

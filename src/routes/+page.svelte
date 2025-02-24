@@ -15,7 +15,9 @@
     import BBCodeTab from '$lib/svelte/BBCodeTab.svelte';
     import ColorManageTab from '$lib/svelte/ColorManageTab.svelte';
     import { AssignColors, ColorConfig } from '$lib/core/namecolorer';
-    import chroma from 'chroma-js';
+    import { dropzone } from '$lib/actions/dropzone';
+    import '$lib/styles/common.css';
+    import { readFileWithEncoding } from '$lib/utils/fileUtils';
 
     const parser = new QQTextParser();
     let colorConfig = new ColorConfig();
@@ -54,6 +56,7 @@
     }
 
     function applyColors() {
+        if (!processedLogs) return;
         // 仅应用颜色
         const colorProcessor = new ColorProcessor(colorConfig);
         coloredLogs = colorProcessor.process(processedLogs);
@@ -61,33 +64,22 @@
         const bbcodeFormatter = new BBCodeFormatter();
         bbcodeOutput = bbcodeFormatter.format(coloredLogs);
     }
-    function onColorUpdate(name: string, newColor: string) {
-        colorConfig = colorConfig.setColor(name, newColor);
+    function onColorConfigUpdate(newConfig: ColorConfig) {
+        colorConfig = newConfig;
+        applyColors();
     }
     // 监听颜色配置变化
     $: colorConfig, processedLogs && applyColors();
 
-    function handleDrop(event: DragEvent) {
-        event.preventDefault();
-        
-        if (event.dataTransfer?.items) {
-            const items = Array.from(event.dataTransfer.items);
-            const textItems = items.filter(item => item.kind === 'file' && item.type.startsWith('text/'));
-            
-            if (textItems.length > 0) {
-                const file = textItems[0].getAsFile();
-                if (file) {
-                    file.text().then(text => {
-                        rawLog = text;
-                        parse_text();
-                    });
-                }
-            }
+    async function handleFileDrop(dataTransfer: DataTransfer) {
+        try {
+            const text = await readFileWithEncoding(dataTransfer);
+            rawLog = text;
+            parse_text();
+        } catch (e) {
+            console.error('文件读取失败:', e);
+            alert(e instanceof Error ? e.message : '文件读取失败');
         }
-    }
-
-    function handleDragOver(event: DragEvent) {
-        event.preventDefault();
     }
 </script>
 <link rel="stylesheet" href="pico.min.css">
@@ -103,9 +95,8 @@
                 <textarea 
                     bind:value={rawLog} 
                     placeholder="在此粘贴QQ记录，支持拖放txt文件"
-                    class="input-textarea"
-                    on:drop={handleDrop}
-                    on:dragover={handleDragOver}
+                    class="common-textarea"
+                    use:dropzone={{ onDrop: handleFileDrop }}
                 ></textarea>
                 <button on:click={parse_text} class="parse-button">转换</button>
             </div>
@@ -116,7 +107,7 @@
                 {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
                 {:else}
-                    <ColorManageTab {onColorUpdate} colorConfig={colorConfig} />
+                    <ColorManageTab {onColorConfigUpdate} colorConfig={colorConfig} />
                 {/if}
             </TabContainer>
         </div>
@@ -185,17 +176,6 @@
 
     .input-section {
         padding: 1rem 2rem;
-    }
-
-    .input-textarea {
-        width: 100%;
-        min-height: 150px;
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        resize: vertical;
-        font-size: 0.8rem;
     }
 
     .parse-button {

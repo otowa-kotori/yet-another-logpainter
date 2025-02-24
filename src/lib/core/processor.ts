@@ -99,6 +99,7 @@ export class ColorProcessor extends LogProcessor {
     process(log: Log): Log {
         return log.map(entry => ({
             ...entry,
+            sender: this.colorConfig.getStandardName(entry.sender),
             color: this.colorConfig.getColor(entry.sender)
         }));
     }
