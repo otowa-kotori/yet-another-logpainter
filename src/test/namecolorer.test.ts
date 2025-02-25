@@ -142,14 +142,14 @@ describe("YAML Serialization", () => {
 
     it("should handle disabled entries", () => {
         const config = CreateColorConfig("Alice", "#FF0000", ["艾丽丝"]);
-        const disabledConfig = config.setDisabled("Alice", true);
+        const disabledConfig = config.setNameType("Alice", "hidden");
         const yamltext = ColorConfigToYAMLText(disabledConfig);
         const expected = [
             {
                 name: "Alice",
                 color: "#ff0000",
                 aliases: ["艾丽丝"],
-                disabled: true
+                type: "hidden"
             }
         ];
         expect(yamltext).toBe(yaml.stringify(expected));

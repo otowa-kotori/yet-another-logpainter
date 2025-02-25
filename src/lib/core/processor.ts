@@ -98,17 +98,21 @@ export class ColorProcessor extends LogProcessor {
 
     process(log: Log): Log {
         return log
-            // 过滤掉禁用的条目
+            // 过滤掉type为hidden的条目
             .filter(entry => {
                 const standardName = this.colorConfig.getStandardName(entry.sender);
-                const enabled = !this.colorConfig.isDisabled(standardName);
-                return enabled;
+                return this.colorConfig.getNameType(standardName) !== "hidden";
             })
             // 替换发送者名字和颜色
-            .map(entry => ({
-                ...entry,
-                sender: this.colorConfig.getStandardName(entry.sender),
-                color: this.colorConfig.getColor(entry.sender)
-            }));
+            .map(entry => {
+                const standardName = this.colorConfig.getStandardName(entry.sender);
+                const nameType = this.colorConfig.getNameType(standardName);
+                return {
+                    ...entry,
+                    // 如果type为preserve_alias则保留原始名字,否则使用标准名字
+                    sender: nameType === "preserve_alias" ? entry.sender : standardName,
+                    color: this.colorConfig.getColor(entry.sender)
+                };
+            });
     }
 }

@@ -87,9 +87,11 @@
 <main class="container">
     <div class="content">
         <div class="header">
-            <h1>QQ跑团记录着色器</h1>
+            <h1>QQ聊天记录着色器</h1>
+            <div class="github-link">
+                <a href="https://github.com/otowa-kotori/yet-another-logpainter" target="_blank">在 GitHub 上查看源码</a>
+            </div>
         </div>
-        
         <div class="log-container">
             <div class="input-section">
                 <textarea 
@@ -191,6 +193,13 @@
 
     .parse-button:hover {
         background-color: #45a049;
+    }
+    .github-link {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+    }
+    .github-link a {
+        color: #333;
     }
 </style>
 

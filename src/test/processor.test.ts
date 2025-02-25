@@ -171,5 +171,22 @@ describe("ColorProcessor", () => {
         expect(result.message).toBe(originalMessage.message);
         expect(result.sender).toBe(originalMessage.sender);
     });
-    
+    it("should handle disabled entries", () => {
+        const colorConfig = CreateColorConfig("Alice", "red", [], "hidden");
+        const colorProcessor = new processors.ColorProcessor(colorConfig);
+        const log = [
+            createMessage({ sender: "Alice", message: "Hello" }),
+        ]
+        const result = colorProcessor.process(log);
+        expect(result).toEqual([]);
+    })
+    it("should handle preserve_alias entries", () => {
+        const colorConfig = CreateColorConfig("Alice", "red", ["艾丽丝"], "preserve_alias");
+        const colorProcessor = new processors.ColorProcessor(colorConfig);
+        const log = [
+            createMessage({ sender: "艾丽丝", message: "Hello" }),
+        ]
+        const result = colorProcessor.process(log);
+        expect(result[0].sender).toBe("艾丽丝");
+    })
 });

@@ -82,9 +82,16 @@
         console.log('复制成功！');
     }
 
-    function toggleDisabled(name: string, disabled: boolean) {
-        console.log(`Toggling disabled for ${name} to ${disabled}`);
-        onColorConfigUpdate(colorConfig.setDisabled(name, disabled));
+    // 添加名字类型的映射
+    const nameTypes = {
+        "normal": "普通",
+        "hidden": "不显示",
+        "preserve_alias": "保留别名"
+    } as const;
+
+    function handleNameTypeChange(name: string, type: "normal" | "hidden" | "preserve_alias") {
+        console.log(`Changing type for ${name} to ${type}`);
+        onColorConfigUpdate(colorConfig.setNameType(name, type));
     }
 
     // 添加新的处理函数
@@ -115,93 +122,179 @@
             onColorConfigUpdate(newConfig);
         }
     }
+
+    // 拖拽相关状态
+    let draggedName: string | null = null;
+    let dropTargetName: string | null = null;
+
+    function handleDragStart(event: DragEvent, name: string) {
+        draggedName = name;
+        // 设置拖动时的视觉效果
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', name);
+        }
+    }
+
+    function handleDragOver(event: DragEvent, targetName: string) {
+        event.preventDefault();
+        if (draggedName && draggedName !== targetName) {
+            dropTargetName = targetName;
+        }
+    }
+
+    function handleDragLeave() {
+        dropTargetName = null;
+    }
+
+    function handleDrop(event: DragEvent, targetName: string) {
+        event.preventDefault();
+        if (!draggedName || draggedName === targetName) return;
+
+        // 确认对话框
+        if (confirm(`确定要将"${draggedName}"作为别名合并到"${targetName}"下吗？`)) {
+            const sourceName = draggedName;
+            const sourceAliases = colorConfig.getAliases(sourceName);
+            const newAliases = [sourceName, ...sourceAliases];
+            
+            // 先删除源
+            let newConfig = colorConfig.removeName(sourceName);
+
+            // 然后更新目标的别名
+            newConfig = newConfig.setAliases(
+                targetName, 
+                [...colorConfig.getAliases(targetName), ...newAliases]
+            );
+            
+            
+            onColorConfigUpdate(newConfig);
+        }
+
+        // 重置状态
+        draggedName = null;
+        dropTargetName = null;
+    }
+
+    function handleDragEnd() {
+        draggedName = null;
+        dropTargetName = null;
+    }
 </script>
 
 <div class="color-manage">
     <h3>颜色管理</h3>
+    <ul>
+        <li>普通: 正常显示，对于出现在别名列表里的名字，会将别名替换成标准名字</li>
+        <li>不显示: 不在log中显示，一般用来处理撤回或系统消息</li>
+        <li>保留别名: 正常显示，但不会将别名替换成标准名字，一般用于NPC。</li>
+    </ul>
+    <p>可以拖拽名字到另一个名字上，用以合并别名</p>
     {#if !senders.length}
         <p class="empty-notice">请先在输入框中粘贴聊天记录</p>
     {:else}
         <div class="sender-list">
             {#each senders as sender}
-                <div class="sender-item">
-                    <div class="sender-info">
-                        <input 
-                            type="text"
-                            class="sender-name-input"
-                            style="color: {sender.color}"
-                            value={sender.name}
-                            on:blur={(e) => handleNameUpdate(sender.name, e.currentTarget.value)}
-                            on:keydown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                }
-                            }}
-                        />
-                        <div class="sender-controls">
-                            <label class="toggle">
-                                <input
-                                    type="checkbox"
-                                    checked={!sender.disabled}
-                                    on:change={(e) => toggleDisabled(sender.name, !e.currentTarget.checked)}
-                                >
-                                <span class="toggle-label">启用</span>
-                            </label>
-                                
-                            <button 
-                                class="color-btn"
-                                style="background-color: {sender.color}"
-                                on:click={() => toggleDropdown(sender.name)}
-                            >选择颜色</button>
-                            {#if activeDropdown === sender.name}
-                                <div class="color-dropdown">
-                                    <button 
-                                        class="color-option"
-                                        on:click={openColorPicker}
-                                    >
-                                        <input 
-                                            type="color" 
-                                            value={sender.color}
-                                            class="color-picker"
-                                            on:input={(e) => {
-                                                updateColor(sender.name, e.currentTarget.value);
-                                            }}
-                                        >
-                                        <span class="color-preview" style="background-color: {sender.color}"></span>
-                                        <span class="color-name">自定义</span>
-                                    </button>
-                                    {#each default_colors as color}
-                                        <button 
-                                            class="color-option"
-                                            on:click={() => {
-                                                updateColor(sender.name, color.color.hex());
-                                                toggleDropdown(sender.name);
-                                            }}
-                                        >
-                                            <span class="color-preview" style="background-color: {color.color.hex()}"></span>
-                                            <span class="color-name">{color.name}</span>
-                                        </button>
-                                    {/each}
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-                    {#if sender.aliases && sender.aliases.length > 0 || true}
-                        <div class="aliases">
+                <div 
+                    role="listitem"
+                    class="sender-item"
+                    draggable="true"
+                    on:dragstart={(e) => handleDragStart(e, sender.name)}
+                    on:dragover={(e) => handleDragOver(e, sender.name)}
+                    on:dragleave={handleDragLeave}
+                    on:drop={(e) => handleDrop(e, sender.name)}
+                    on:dragend={handleDragEnd}
+                    class:drag-over={dropTargetName === sender.name}
+                    class:being-dragged={draggedName === sender.name}
+                >
+                    <div class="sender-content">
+                        <div class="sender-info">
                             <input 
                                 type="text"
-                                class="aliases-input"
-                                value={sender.aliases.join(', ')}
-                                placeholder="输入别名，用逗号或空格分隔"
-                                on:blur={(e) => handleAliasesUpdate(sender.name, e.currentTarget.value)}
+                                class="sender-name-input"
+                                style="color: {sender.color}"
+                                value={sender.name}
+                                on:blur={(e) => handleNameUpdate(sender.name, e.currentTarget.value)}
                                 on:keydown={(e) => {
                                     if (e.key === 'Enter') {
                                         e.currentTarget.blur();
                                     }
                                 }}
+                                draggable="true"
+                                on:dragstart|preventDefault|stopPropagation
+                                on:dragover|preventDefault|stopPropagation
                             />
+                            <div class="sender-controls">
+                                <select
+                                    class="name-type-select"
+                                    value={sender.type}
+                                    on:change={(e) => handleNameTypeChange(
+                                        sender.name, 
+                                        e.currentTarget.value as "normal" | "hidden" | "preserve_alias"
+                                    )}
+                                >
+                                    {#each Object.entries(nameTypes) as [value, label]}
+                                        <option {value}>{label}</option>
+                                    {/each}
+                                </select>
+                                <div class="color-btn-container">
+                                    <button 
+                                        class="color-btn"
+                                        style="background-color: {sender.color}"
+                                        on:click={() => toggleDropdown(sender.name)}
+                                    >选择颜色</button>
+                                    {#if activeDropdown === sender.name}
+                                        <div class="color-dropdown">
+                                            <button 
+                                                class="color-option"
+                                                on:click={openColorPicker}
+                                            >
+                                                <input 
+                                                    type="color" 
+                                                    value={sender.color}
+                                                    class="color-picker"
+                                                    on:input={(e) => {
+                                                        updateColor(sender.name, e.currentTarget.value);
+                                                    }}
+                                                >
+                                                <span class="color-preview" style="background-color: {sender.color}"></span>
+                                                <span class="color-name">自定义</span>
+                                            </button>
+                                            {#each default_colors as color}
+                                                <button 
+                                                    class="color-option"
+                                                    on:click={() => {
+                                                        updateColor(sender.name, color.color.hex());
+                                                        toggleDropdown(sender.name);
+                                                    }}
+                                                >
+                                                    <span class="color-preview" style="background-color: {color.color.hex()}"></span>
+                                                    <span class="color-name">{color.name}</span>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
                         </div>
-                    {/if}
+                        {#if sender.aliases && sender.aliases.length > 0 || true}
+                            <div class="aliases">
+                                <textarea 
+                                    class="aliases-input"
+                                    value={sender.aliases.join(', ')}
+                                    placeholder="输入别名，用逗号或空格分隔"
+                                    on:blur={(e) => handleAliasesUpdate(sender.name, e.currentTarget.value)}
+                                    on:keydown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.currentTarget.blur();
+                                        }
+                                    }}
+                                    draggable="true"
+                                    on:dragstart|preventDefault|stopPropagation
+                                    on:dragover|preventDefault|stopPropagation
+                                ></textarea>
+                            </div>
+                        {/if}
+                    </div>
                 </div>
             {/each}
         </div>
@@ -247,7 +340,7 @@
     /* 列表布局 */
     .sender-list {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 1rem;
         padding: 1rem;
         position: relative;
@@ -255,29 +348,34 @@
     }
 
     .sender-item {
+        display: flex;
+        gap: 0.5rem;
         position: relative;
-        padding: 1rem;
+        padding: 0.5rem;
+        cursor: move;
+        transition: all 0.2s ease;
     }
 
-    /* 发送者信息布局 */
+    .sender-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
     .sender-info {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        margin-bottom: 0.5rem;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-bottom: 0.25rem;
     }
 
     .sender-controls {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-    }
-
-    .sender-name {
-        font-weight: 500;
-        font-size: 0.9rem;
-        flex: 1;
+        padding-left: 0.25rem;
+        height: 2rem;
     }
 
     .color-name {
@@ -286,25 +384,29 @@
 
     /* 按钮样式 */
     .color-btn {
-        padding: 0.25rem 0.75rem;
+        padding: 0.25rem 0.5rem;
+        height: 1.8rem;
+        min-width: 6rem;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-size: 0.8rem;
         cursor: pointer;
         color: white;
-        height: 28px;
-        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* 下拉菜单样式 */
     .color-dropdown {
         position: absolute;
         top: calc(100% + 5px);
-        left: 0;
         right: 0;
         z-index: 1000;
-        max-height: 200px;
+        max-height: 12rem;
         overflow-y: auto;
+        min-width: 8rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     /* 颜色选项样式 */
@@ -361,30 +463,31 @@
         font-size: 0.9rem;
         transition: all 0.2s;
     }
-    .toggle {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        cursor: pointer;
-        user-select: none;
-    }
 
-    .toggle input {
-        margin: 0;
-    }
-
-    .toggle-label {
+    .name-type-select {
+        appearance: auto;
+        padding: 0.25rem 0.5rem;
+        margin-bottom: 0;
         font-size: 0.8rem;
-        color: #666;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        height: 1.8rem;
+    }
+
+    .name-type-select:hover {
+        border-color: #bbb;
     }
 
     /* 修改别名样式 */
     .aliases {
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
         gap: 0.25rem;
         padding-top: 0.25rem;
         border-top: 1px solid #eee;
+        width: 100%;
     }
 
     .color-name {
@@ -392,13 +495,15 @@
     }
 
     .sender-name-input {
+        width: 100%;
         font-weight: 500;
         font-size: 0.9rem;
-        flex: 1;
         border: 1px solid transparent;
         background: transparent;
-        padding: 0.25rem;
+        padding: 0.15rem 0.25rem;
         border-radius: 4px;
+        height: 1.5rem;
+        margin-bottom: 0;
     }
 
     .sender-name-input:hover,
@@ -407,19 +512,35 @@
         background: white;
     }
 
+    .aliases-input,
+    .sender-name-input{
+        user-select: text !important;
+    }
+
     .aliases-input {
         width: 100%;
         font-size: 0.75rem;
-        padding: 0.25rem;
-        border: 1px solid transparent;
-        background: transparent;
+        padding: 0.5rem;
         border-radius: 3px;
+        field-sizing: content;
+        word-break: break-all;
     }
 
-    .aliases-input:hover,
-    .aliases-input:focus {
-        border-color: #ddd;
-        background: white;
+    .drag-over {
+        background-color: rgba(0, 120, 255, 0.1);
+        border: 1px dashed #0078ff;
     }
 
+    .being-dragged {
+        opacity: 0.5;
+    }
+
+    .sender-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .color-btn-container {
+        position: relative;
+    }
 </style> 

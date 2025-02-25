@@ -28,11 +28,13 @@ export const default_colors = [
     { color: chroma('silver'), name: '灰色' }
 ];
 
+type NameType = "normal" | "hidden" | "preserve_alias"
+
 interface ColorEntryJSON {
     name: string;
     color: string;
     aliases: string[];
-    disabled?: boolean;
+    type?: NameType;
 }
 
 // 新增 ColorEntry 类来管理单个颜色的所有信息
@@ -41,15 +43,24 @@ class ColorEntry {
         public readonly name: string,
         public readonly color: chroma.Color,
         public readonly aliases: string[] = [],
-        public readonly disabled: boolean
+        public readonly type: NameType = "normal"
     ) {}
+
+    with(changes: Partial<Omit<ColorEntry, 'with' | 'toJSON'>>): ColorEntry {
+        return new ColorEntry(
+            changes.name ?? this.name,
+            changes.color ?? this.color,
+            changes.aliases ?? this.aliases,
+            changes.type ?? this.type
+        );
+    }
 
     static fromJSON(json: ColorEntryJSON): ColorEntry {
         return new ColorEntry(
             json.name, 
             chroma(json.color), 
             json.aliases, 
-            json.disabled ?? false
+            json.type ?? "normal"
         );
     }
 
@@ -60,8 +71,8 @@ class ColorEntry {
             aliases: this.aliases
         };
         
-        if (this.disabled) {
-            result.disabled = true;
+        if (this.type !== "normal") {
+            result.type = this.type;
         }
         
         return result;
@@ -121,12 +132,11 @@ export class ColorConfig {
             if (index !== -1) {
                 // 合并别名，去重
                 const mergedAliases = [...new Set([...newEntries[index].aliases, ...entry.aliases])];
-                newEntries[index] = new ColorEntry(
-                    entry.name,
-                    entry.color,
-                    mergedAliases,
-                    entry.disabled
-                );
+                newEntries[index] = newEntries[index].with({
+                    aliases: mergedAliases,
+                    color: entry.color,
+                    type: entry.type
+                });
             } else if (!existingNames.has(entry.name)) {
                 newEntries.push(entry);
             }
@@ -141,35 +151,23 @@ export class ColorConfig {
         if (index === -1) return this;
 
         const newEntries = [...this.entries];
-        const existingEntry = newEntries[index];
-        newEntries[index] = new ColorEntry(
-            name,
-            chromaColor,
-            existingEntry.aliases,
-            existingEntry.disabled
-        );
+        newEntries[index] = newEntries[index].with({ color: chromaColor });
         
         return new ColorConfig(newEntries);
     }
 
-    setDisabled(name: string, disabled: boolean): ColorConfig {
+    setNameType(name: string, type: NameType): ColorConfig {
         const index = this.entries.findIndex(e => e.name === name);
         if (index === -1) return this;
 
         const newEntries = [...this.entries];
-        const existingEntry = newEntries[index];
-        newEntries[index] = new ColorEntry(
-            name,
-            existingEntry.color,
-            existingEntry.aliases,
-            disabled
-        );
+        newEntries[index] = newEntries[index].with({ type });
         
         return new ColorConfig(newEntries);
     }
 
-    isDisabled(name: string): boolean {
-        return this.entriesMap.get(name)?.disabled ?? false;
+    getNameType(name: string): NameType {
+        return this.entriesMap.get(name)?.type ?? "normal";
     }
 
     setName(oldName: string, newName: string): ColorConfig {
@@ -177,7 +175,6 @@ export class ColorConfig {
         if (index === -1) return this;
 
         const newEntries = [...this.entries];
-        const existingEntry = newEntries[index];
         
         // 检查新名字是否已存在或为别人的别名
         if (this.aliases_to_name.has(newName) && newName !== oldName) {
@@ -185,12 +182,7 @@ export class ColorConfig {
             return this;
         }
 
-        newEntries[index] = new ColorEntry(
-            newName,
-            existingEntry.color,
-            existingEntry.aliases,
-            existingEntry.disabled
-        );
+        newEntries[index] = newEntries[index].with({ name: newName });
         
         return new ColorConfig(newEntries);
     }
@@ -200,7 +192,6 @@ export class ColorConfig {
         if (index === -1) return this;
 
         const newEntries = [...this.entries];
-        const existingEntry = newEntries[index];
         
         // 检查新别名是否与其他条目的名字或别名冲突
         const conflictingAlias = newAliases.find(alias => {
@@ -213,13 +204,18 @@ export class ColorConfig {
             return this;
         }
 
-        newEntries[index] = new ColorEntry(
-            name,
-            existingEntry.color,
-            newAliases,
-            existingEntry.disabled
-        );
+        newEntries[index] = newEntries[index].with({ aliases: newAliases });
         
+        return new ColorConfig(newEntries);
+    }
+
+    removeName(name: string): ColorConfig {
+        const index = this.entries.findIndex(e => e.name === name);
+        if (index === -1) return this;
+
+        const newEntries = [...this.entries];
+        newEntries.splice(index, 1);
+
         return new ColorConfig(newEntries);
     }
 }
@@ -228,10 +224,11 @@ export class ColorConfig {
 export function CreateColorConfig(
     name: string,
     color: chroma.Color | string,
-    aliases: string[] = []
+    aliases: string[] = [],
+    type: NameType = "normal"
 ): ColorConfig {
     const chromaColor = typeof color === 'string' ? chroma(color) : color;
-    return new ColorConfig([new ColorEntry(name, chromaColor, aliases, false)]);
+    return new ColorConfig([new ColorEntry(name, chromaColor, aliases, type)]);
 }
 
 // 修改解析函数
@@ -255,7 +252,7 @@ export function ParseColorConfig(text: string): ColorConfig {
         const aliasLine = lines[i + 1];
         const aliases = aliasLine ? aliasLine.split('$').map(a => a.trim()).filter(a => a) : [];
         
-        entries.push(new ColorEntry(name, color, aliases, false));
+        entries.push(new ColorEntry(name, color, aliases, "normal"));
     }
 
     return new ColorConfig(entries);
