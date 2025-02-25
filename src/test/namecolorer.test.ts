@@ -101,7 +101,7 @@ describe("ColorConfig", () => {
 
     it("should return correct entries", () => {
         const config = CreateColorConfig("Alice", "red", ["A", "艾丽丝"]);
-        const entries = config.getEntries();
+        const entries = config.entries;
         
         expect(entries.length).toBe(1);
         const entry = entries[0];

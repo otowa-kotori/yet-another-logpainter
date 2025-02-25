@@ -10,7 +10,7 @@
     export let onColorConfigUpdate: (newConfig: ColorConfig) => void;
 
     // 获取颜色映射并转换为数组
-    $: senders = colorConfig.getEntries();
+    $: senders = colorConfig.entries;
     function updateColor(name: string, newColor: string) {
         console.log(`Updating color for ${name} to ${newColor}`);
         onColorConfigUpdate(colorConfig.setColor(name, newColor));
@@ -86,6 +86,35 @@
         console.log(`Toggling disabled for ${name} to ${disabled}`);
         onColorConfigUpdate(colorConfig.setDisabled(name, disabled));
     }
+
+    // 添加新的处理函数
+    function handleNameUpdate(oldName: string, newName: string) {
+        if (newName.trim() === '') return;
+        const newConfig = colorConfig.setName(oldName, newName.trim());
+        if (newConfig === colorConfig) {
+            // 更新失败，显示提示
+            alert(`无法将 "${oldName}" 改名为 "${newName}"，因为该名字已被使用`);
+            // 重置输入框为原来的值
+            const input = document.querySelector(`input[value="${oldName}"]`) as HTMLInputElement;
+            if (input) input.value = oldName;
+        } else {
+            onColorConfigUpdate(newConfig);
+        }
+    }
+
+    function handleAliasesUpdate(name: string, aliasesString: string) {
+        const newAliases = aliasesString.split(/[,，\s]+/).filter(alias => alias.trim() !== '');
+        const newConfig = colorConfig.setAliases(name, newAliases);
+        if (newConfig === colorConfig) {
+            // 更新失败，显示提示
+            alert(`无法更新别名，因为存在冲突的名字或别名`);
+            // 重置输入框为原来的值
+            const input = document.querySelector(`.aliases-input[value="${colorConfig.getAliases(name).join(', ')}"]`) as HTMLInputElement;
+            if (input) input.value = colorConfig.getAliases(name).join(', ');
+        } else {
+            onColorConfigUpdate(newConfig);
+        }
+    }
 </script>
 
 <div class="color-manage">
@@ -97,7 +126,18 @@
             {#each senders as sender}
                 <div class="sender-item">
                     <div class="sender-info">
-                        <span class="sender-name" style="color: {sender.color}">{sender.name}</span>
+                        <input 
+                            type="text"
+                            class="sender-name-input"
+                            style="color: {sender.color}"
+                            value={sender.name}
+                            on:blur={(e) => handleNameUpdate(sender.name, e.currentTarget.value)}
+                            on:keydown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                        />
                         <div class="sender-controls">
                             <label class="toggle">
                                 <input
@@ -146,11 +186,20 @@
                             {/if}
                         </div>
                     </div>
-                    {#if sender.aliases && sender.aliases.length > 0}
+                    {#if sender.aliases && sender.aliases.length > 0 || true}
                         <div class="aliases">
-                            {#each sender.aliases as alias}
-                                <span class="alias-tag">{alias}</span>
-                            {/each}
+                            <input 
+                                type="text"
+                                class="aliases-input"
+                                value={sender.aliases.join(', ')}
+                                placeholder="输入别名，用逗号或空格分隔"
+                                on:blur={(e) => handleAliasesUpdate(sender.name, e.currentTarget.value)}
+                                on:keydown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.currentTarget.blur();
+                                    }
+                                }}
+                            />
                         </div>
                     {/if}
                 </div>
@@ -338,17 +387,39 @@
         border-top: 1px solid #eee;
     }
 
-    .alias-tag {
-        font-size: 0.75rem;
-        padding: 0.1rem 0.4rem;
-        background-color: #f0f0f0;
-        border-radius: 3px;
-        color: #666;
-    }
-
-    /* 恢复合并的文本样式 */
-    .sender-name,
     .color-name {
         color: #333;
     }
+
+    .sender-name-input {
+        font-weight: 500;
+        font-size: 0.9rem;
+        flex: 1;
+        border: 1px solid transparent;
+        background: transparent;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .sender-name-input:hover,
+    .sender-name-input:focus {
+        border-color: #ddd;
+        background: white;
+    }
+
+    .aliases-input {
+        width: 100%;
+        font-size: 0.75rem;
+        padding: 0.25rem;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 3px;
+    }
+
+    .aliases-input:hover,
+    .aliases-input:focus {
+        border-color: #ddd;
+        background: white;
+    }
+
 </style> 

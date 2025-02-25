@@ -69,38 +69,43 @@ class ColorEntry {
 }
 
 export class ColorConfig {
-    private readonly entries: Map<string, ColorEntry>;
+    private readonly entriesMap: Map<string, ColorEntry>;
     private readonly aliases_to_name: Map<string, string>;
+    public readonly entries: ColorEntry[];
 
-    constructor(entries?: Map<string, ColorEntry>) {
-        this.entries = entries ?? new Map();
+    constructor(entries?: ColorEntry[]) {
+        this.entries = entries ?? [];
         
-        // 重构别名映射的构建
-        let aliases_to_name = new Map();
+        // 构建查找映射
+        this.entriesMap = new Map(
+            this.entries.map(entry => [entry.name, entry])
+        );
+        
+        // 构建别名映射
+        this.aliases_to_name = new Map();
         this.entries.forEach(entry => {
             entry.aliases.forEach(alias => {
-                aliases_to_name.set(alias, entry.name);
+                this.aliases_to_name.set(alias, entry.name);
             });
-            aliases_to_name.set(entry.name, entry.name);
+            this.aliases_to_name.set(entry.name, entry.name);
         });
-        this.aliases_to_name = aliases_to_name;
     }
 
     getAliases(name: string): string[] {
-        return this.entries.get(name)?.aliases ?? [];
+        return this.entriesMap.get(name)?.aliases ?? [];
     }
 
     getColor(name: string): chroma.Color {
         const standardName = this.getStandardName(name);
-        return this.entries.get(standardName)?.color ?? chroma('black');
+        return this.entriesMap.get(standardName)?.color ?? chroma('black');
     }
 
     hasColor(name: string): boolean {
-        return this.entries.has(name);
+        return this.entriesMap.has(name);
     }
 
     getAllColors(): chroma.Color[] {
-        return Array.from(this.entries.values()).map(entry => entry.color);
+        return this.entries.map(entry => entry.color);
     }
 
     getStandardName(name: string): string {
@@ -108,59 +113,114 @@ export class ColorConfig {
     }
 
     merge(other: ColorConfig): ColorConfig {
-        const newEntries = new Map(this.entries);
+        const newEntries = [...this.entries];
+        const existingNames = new Set(newEntries.map(e => e.name));
         
-        other.entries.forEach((entry, name) => {
-            const existingEntry = newEntries.get(name);
-            if (existingEntry) {
+        other.entries.forEach(entry => {
+            const index = newEntries.findIndex(e => e.name === entry.name);
+            if (index !== -1) {
                 // 合并别名，去重
-                const mergedAliases = [...new Set([...existingEntry.aliases, ...entry.aliases])];
-                newEntries.set(name, new ColorEntry(name, entry.color, mergedAliases, entry.disabled));
-            } else {
-                newEntries.set(name, entry);
+                const mergedAliases = [...new Set([...newEntries[index].aliases, ...entry.aliases])];
+                newEntries[index] = new ColorEntry(
+                    entry.name,
+                    entry.color,
+                    mergedAliases,
+                    entry.disabled
+                );
+            } else if (!existingNames.has(entry.name)) {
+                newEntries.push(entry);
             }
         });
 
         return new ColorConfig(newEntries);
     }
 
-    getEntries(): ColorEntry[] {
-        return Array.from(this.entries.values());
-    }
-
     setColor(name: string, color: chroma.Color | string): ColorConfig {
         const chromaColor = typeof color === 'string' ? chroma(color) : color;
-        const existingEntry = this.entries.get(name);
-        const newEntries = new Map(this.entries);
-        
-        newEntries.set(name, new ColorEntry(
+        const index = this.entries.findIndex(e => e.name === name);
+        if (index === -1) return this;
+
+        const newEntries = [...this.entries];
+        const existingEntry = newEntries[index];
+        newEntries[index] = new ColorEntry(
             name,
             chromaColor,
-            existingEntry?.aliases ?? [],
-            existingEntry?.disabled ?? false
-        ));
+            existingEntry.aliases,
+            existingEntry.disabled
+        );
         
         return new ColorConfig(newEntries);
     }
 
     setDisabled(name: string, disabled: boolean): ColorConfig {
-        const existingEntry = this.entries.get(name);
-        if (!existingEntry) return this;
-        
-        const newEntries = new Map(this.entries);
-        newEntries.set(name, new ColorEntry(
+        const index = this.entries.findIndex(e => e.name === name);
+        if (index === -1) return this;
+
+        const newEntries = [...this.entries];
+        const existingEntry = newEntries[index];
+        newEntries[index] = new ColorEntry(
             name,
             existingEntry.color,
             existingEntry.aliases,
             disabled
-        ));
+        );
         
         return new ColorConfig(newEntries);
     }
 
-    // 获取是否被禁用
     isDisabled(name: string): boolean {
-        return this.entries.get(name)?.disabled ?? false;
+        return this.entriesMap.get(name)?.disabled ?? false;
+    }
+
+    setName(oldName: string, newName: string): ColorConfig {
+        const index = this.entries.findIndex(e => e.name === oldName);
+        if (index === -1) return this;
+
+        const newEntries = [...this.entries];
+        const existingEntry = newEntries[index];
+        
+        // 检查新名字是否已存在或为别人的别名
+        if (this.aliases_to_name.has(newName) && newName !== oldName) {
+            console.warn(`Name ${newName} already exists, skipping rename of ${oldName}`);
+            return this;
+        }
+
+        newEntries[index] = new ColorEntry(
+            newName,
+            existingEntry.color,
+            existingEntry.aliases,
+            existingEntry.disabled
+        );
+        
+        return new ColorConfig(newEntries);
+    }
+
+    setAliases(name: string, newAliases: string[]): ColorConfig {
+        const index = this.entries.findIndex(e => e.name === name);
+        if (index === -1) return this;
+
+        const newEntries = [...this.entries];
+        const existingEntry = newEntries[index];
+        
+        // 检查新别名是否与其他条目的名字或别名冲突
+        const conflictingAlias = newAliases.find(alias => {
+            const owner = this.aliases_to_name.get(alias);
+            return owner !== undefined && owner !== name;
+        });
+        
+        if (conflictingAlias) {
+            console.warn(`Alias ${conflictingAlias} already exists, skipping rename of ${name}`);
+            return this;
+        }
+
+        newEntries[index] = new ColorEntry(
+            name,
+            existingEntry.color,
+            newAliases,
+            existingEntry.disabled
+        );
+        
+        return new ColorConfig(newEntries);
     }
 }
 
@@ -171,14 +231,13 @@ export function CreateColorConfig(
     aliases: string[] = []
 ): ColorConfig {
     const chromaColor = typeof color === 'string' ? chroma(color) : color;
-    const entries = new Map([[name, new ColorEntry(name, chromaColor, aliases, false)]]);
-    return new ColorConfig(entries);
+    return new ColorConfig([new ColorEntry(name, chromaColor, aliases, false)]);
 }
 
 // 修改解析函数
 export function ParseColorConfig(text: string): ColorConfig {
     const lines = text.trim().split('\n').map(line => line.trim());
-    const entries = new Map<string, ColorEntry>();
+    const entries: ColorEntry[] = [];
 
     for (let i = 0; i < lines.length; i += 2) {
         const colorLine = lines[i];
@@ -196,7 +255,7 @@ export function ParseColorConfig(text: string): ColorConfig {
         const aliasLine = lines[i + 1];
         const aliases = aliasLine ? aliasLine.split('$').map(a => a.trim()).filter(a => a) : [];
         
-        entries.set(name, new ColorEntry(name, color, aliases, false));
+        entries.push(new ColorEntry(name, color, aliases, false));
     }
 
     return new ColorConfig(entries);
@@ -204,15 +263,13 @@ export function ParseColorConfig(text: string): ColorConfig {
 
 // 将YAML格式转化成ColorConfig，使用yaml库
 export function YAMLToColorConfig(yamltext: string): ColorConfig {
-    const entries = yaml.parse(yamltext);
-    return new ColorConfig(new Map(
-        entries.map((json:any) => [json.name, ColorEntry.fromJSON(json)])
-    ));
+    const jsonEntries = yaml.parse(yamltext);
+    return new ColorConfig(jsonEntries.map((json:any) => ColorEntry.fromJSON(json)));
 }
 
 // 将ColorConfig转化成YAML格式，使用yaml库
 export function ColorConfigToYAMLText(config: ColorConfig): string {
-    const entries = config.getEntries().map(entry => entry.toJSON());
+    const entries = config.entries.map(entry => entry.toJSON());
     return yaml.stringify(entries);
 }
 
