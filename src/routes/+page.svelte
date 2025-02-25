@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { QQTextParser, ProcessorGroup, BBCodeFormatter } from '$lib';
+    import { AutoDetectLogParser, ProcessorGroup, BBCodeFormatter } from '$lib';
     import { 
         SplitMultilineProcessor,
         RemoveImageProcessor,
@@ -19,7 +19,7 @@
     import '$lib/styles/common.css';
     import { readFileWithEncoding } from '$lib/utils/fileUtils';
 
-    const parser = new QQTextParser();
+    const parser = new AutoDetectLogParser();
     let colorConfig = new ColorConfig();
     
     // 文本处理器
@@ -68,6 +68,10 @@
         colorConfig = newConfig;
         applyColors();
     }
+    function clear_color() {
+        colorConfig = new ColorConfig();
+        applyColors();
+    }
     // 监听颜色配置变化
     $: colorConfig, processedLogs && applyColors();
 
@@ -100,7 +104,10 @@
                     class="common-textarea"
                     use:dropzone={{ onDrop: handleFileDrop }}
                 ></textarea>
-                <button on:click={parse_text} class="parse-button">转换</button>
+                <div class="button-group">
+                    <button on:click={parse_text} class="parse-button">转换</button>
+                    <button on:click={clear_color} class="clear-color-button">清空颜色</button>
+                </div>
             </div>
 
             <TabContainer {tabs} let:activeTab>
@@ -180,15 +187,24 @@
         padding: 1rem 2rem;
     }
 
-    .parse-button {
+    .button-group{
         width: 100%;
-        padding: 0.6rem;
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .parse-button {
         background-color: #4CAF50;
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 0.9rem;
+        flex: 5;
+    }
+
+    .clear-color-button {
+        flex: 1;
     }
 
     .parse-button:hover {
