@@ -18,22 +18,14 @@
     import { dropzone } from '$lib/actions/dropzone';
     import '$lib/styles/common.css';
     import { readFileWithEncoding } from '$lib/utils/fileUtils';
+    import ProcessorTab from '$lib/svelte/ProcessorTab.svelte';
+    import type { ProcessorConfig } from '$lib/core/config';
+    import type { LogProcessor } from '$lib/core/types';
+    import { processorConfig } from '$lib/stores/config';
 
     const parser = new AutoDetectLogParser();
     let colorConfig = new ColorConfig();
-    
-    // 文本处理器
-    const textProcessors = [
-        new SplitMultilineProcessor(),    
-        new RemoveImageProcessor(),
-        new ReplaceMeProcessor(),
-        new RemoveDiceCommandProcessor(),
-        new RemoveParenthesesProcessor(),
-        new RemoveEmptyMessageProcessor()
-    ];
-
-    const textProcessor = new ProcessorGroup(textProcessors);
-    
+        
     let rawLog = '';
     let parsedLogs: Log;
     let processedLogs: Log;
@@ -43,10 +35,23 @@
     const tabs = [
         { id: 'preview', label: '预览' },
         { id: 'bbcode', label: 'BBCode' },
-        { id: 'color', label: '颜色管理' }
+        { id: 'processor', label: '文本处理设置' },
+        { id: 'color', label: '颜色管理' },
     ];
 
     function parse_text() {
+        // 文本处理器
+        let textProcessors = [
+            $processorConfig.splitMultiline && new SplitMultilineProcessor(),
+            $processorConfig.removeImage && new RemoveImageProcessor(),
+            $processorConfig.replaceMe && new ReplaceMeProcessor(),
+            $processorConfig.removeDiceCommand && new RemoveDiceCommandProcessor(),
+            $processorConfig.removeParentheses && new RemoveParenthesesProcessor(),
+            $processorConfig.removeEmptyMessage && new RemoveEmptyMessageProcessor()
+        ].filter((p): p is LogProcessor => p !== false);
+
+        let textProcessor = new ProcessorGroup(textProcessors);
+
         // 解析并处理文本
         parsedLogs = parser.parse(rawLog);
         processedLogs = textProcessor.process(parsedLogs);
@@ -85,6 +90,13 @@
             alert(e instanceof Error ? e.message : '文件读取失败');
         }
     }
+
+    function onProcessorConfigUpdate(newConfig: ProcessorConfig) {
+        processorConfig.update(newConfig);
+        if (rawLog) {
+            parse_text();
+        }
+    }
 </script>
 <link rel="stylesheet" href="pico.min.css">
 
@@ -115,8 +127,13 @@
                     <PreviewTab log={coloredLogs} />
                 {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
-                {:else}
-                    <ColorManageTab {onColorConfigUpdate} colorConfig={colorConfig} />
+                {:else if activeTab === 'color'}
+                    <ColorManageTab onColorConfigUpdate={onColorConfigUpdate} {colorConfig} />
+                {:else if activeTab === 'processor'}
+                    <ProcessorTab 
+                        processorConfig={$processorConfig}
+                        onConfigUpdate={onProcessorConfigUpdate}
+                    />
                 {/if}
             </TabContainer>
         </div>

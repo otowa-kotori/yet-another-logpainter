@@ -33,5 +33,6 @@
     }
     .log-message {
         margin-left: 4px;
+        white-space: pre-wrap;
     }
 </style> 
