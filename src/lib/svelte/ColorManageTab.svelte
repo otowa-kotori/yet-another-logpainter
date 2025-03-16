@@ -1,51 +1,25 @@
 <script lang="ts">
     import { ColorConfig, YAMLToColorConfig, ColorConfigToYAMLText } from '$lib/core/namecolorer';
-    import { default_colors } from '$lib/core/namecolorer';
-    import { onMount } from 'svelte';
     import { dropzone } from '$lib/actions/dropzone';
     import { readFileWithEncoding } from '$lib/utils/fileUtils';
     import FloatingCopy from '$lib/svelte/FloatingCopy.svelte';
+    import chroma from 'chroma-js';
+    import type { Color } from 'chroma-js';
+    import ColorDropdown from './ColorDropdown.svelte';
+    import { createDropdownContext } from './dropdownContext';
 
     export let colorConfig: ColorConfig;
     export let onColorConfigUpdate: (newConfig: ColorConfig) => void;
 
+    // 创建颜色选择器上下文
+    createDropdownContext();
+    
     // 获取颜色映射并转换为数组
     $: senders = colorConfig.entries;
-    function updateColor(name: string, newColor: string) {
+    function updateColor(name: string, newColor: Color) {
         console.log(`Updating color for ${name} to ${newColor}`);
         onColorConfigUpdate(colorConfig.setColor(name, newColor));
     }
-
-    // 控制下拉菜单的显示
-    let activeDropdown: string | null = null;
-
-    function toggleDropdown(name: string) {
-        activeDropdown = activeDropdown === name ? null : name;
-    }
-
-    function openColorPicker(event: MouseEvent) {
-        const input = (event.currentTarget as HTMLElement)
-            .querySelector('input[type="color"]') as HTMLInputElement;
-        input.click();
-    }
-
-    // 添加点击外部关闭下拉框的处理函数
-    function handleClickOutside(event: MouseEvent) {
-        const target = event.target as HTMLElement;
-        // 如果点击的不是下拉框相关元素，则关闭下拉框
-        if (!target.closest('.color-dropdown') && !target.closest('.color-btn')) {
-            activeDropdown = null;
-        }
-    }
-
-    onMount(() => {
-        // 添加全局点击事件监听
-        document.addEventListener('click', handleClickOutside);
-        return () => {
-            // 组件卸载时移除事件监听
-            document.removeEventListener('click', handleClickOutside);
-        };
-    });
 
     // 处理导入
     function handleImport() {
@@ -121,6 +95,22 @@
         } else {
             onColorConfigUpdate(newConfig);
         }
+    }
+
+    // 处理名字颜色更新
+    function handleNameColorToggle(name: string, enabled: boolean) {
+        if (enabled) {
+            // 启用名字颜色，默认设为白色
+            onColorConfigUpdate(colorConfig.setNameColor(name, chroma('white')));
+        } else {
+            // 禁用名字颜色，设为空值
+            onColorConfigUpdate(colorConfig.setNameColor(name, null));
+        }
+    }
+
+    function updateNameColor(name: string, newColor: Color) {
+        console.log(`Updating name color for ${name} to ${newColor}`);
+        onColorConfigUpdate(colorConfig.setNameColor(name, newColor));
     }
 
     // 拖拽相关状态
@@ -237,44 +227,33 @@
                                     {/each}
                                 </select>
                                 <div class="color-btn-container">
-                                    <button 
-                                        class="color-btn"
-                                        style="background-color: {sender.color}"
-                                        on:click={() => toggleDropdown(sender.name)}
-                                    >选择颜色</button>
-                                    {#if activeDropdown === sender.name}
-                                        <div class="color-dropdown">
-                                            <button 
-                                                class="color-option"
-                                                on:click={openColorPicker}
-                                            >
-                                                <input 
-                                                    type="color" 
-                                                    value={sender.color}
-                                                    class="color-picker"
-                                                    on:input={(e) => {
-                                                        updateColor(sender.name, e.currentTarget.value);
-                                                    }}
-                                                >
-                                                <span class="color-preview" style="background-color: {sender.color}"></span>
-                                                <span class="color-name">自定义</span>
-                                            </button>
-                                            {#each default_colors as color}
-                                                <button 
-                                                    class="color-option"
-                                                    on:click={() => {
-                                                        updateColor(sender.name, color.color.hex());
-                                                        toggleDropdown(sender.name);
-                                                    }}
-                                                >
-                                                    <span class="color-preview" style="background-color: {color.color.hex()}"></span>
-                                                    <span class="color-name">{color.name}</span>
-                                                </button>
-                                            {/each}
-                                        </div>
-                                    {/if}
+                                    <ColorDropdown 
+                                        id={`color-dropdown-${sender.name}`}
+                                        color={sender.color}
+                                        onColorChange={(newColor) => updateColor(sender.name, newColor)}
+                                    />
                                 </div>
+                                
                             </div>
+                        </div>
+                        <div class="name-color-control">
+                            <label class="name-color-label">
+                                <input 
+                                    type="checkbox" 
+                                    checked={!!sender.nameColor}
+                                    on:change={(e) => handleNameColorToggle(sender.name, e.currentTarget.checked)}
+                                />
+                                独立名字颜色
+                            </label>
+                            {#if sender.nameColor}
+                                <div class="name-color-picker">
+                                    <ColorDropdown 
+                                        id={`name-color-dropdown-${sender.name}`}
+                                        color={sender.nameColor}
+                                        onColorChange={(newColor) => updateNameColor(sender.name, newColor)}
+                                    />
+                                </div>
+                            {/if}
                         </div>
                         {#if sender.aliases && sender.aliases.length > 0 || true}
                             <div class="aliases">
@@ -330,8 +309,7 @@
     }
 
     /* 合并共同的边框和背景样式 */
-    .sender-item,
-    .color-dropdown {
+    .sender-item {
         background: white;
         border: 1px solid #e0e0e0;
         border-radius: 6px;
@@ -378,75 +356,10 @@
         height: 2rem;
     }
 
-    .color-name {
-        font-size: 0.85rem;
-    }
-
-    /* 按钮样式 */
-    .color-btn {
-        padding: 0.25rem 0.5rem;
-        height: 1.8rem;
-        min-width: 6rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        cursor: pointer;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* 下拉菜单样式 */
-    .color-dropdown {
-        position: absolute;
-        top: calc(100% + 5px);
-        right: 0;
-        z-index: 1000;
-        max-height: 12rem;
-        overflow-y: auto;
-        min-width: 8rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    /* 颜色选项样式 */
-    .color-option {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        width: 100%;
-        padding: 0.5rem;
-        border: none;
-        background: none;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-
-    .color-option:hover {
-        background-color: #f5f5f5;
-    }
-
-    .color-preview {
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        border: 1px solid #e0e0e0;
-    }
-
     /* 辅助样式 */
     .empty-notice {
         color: #666;
         font-style: italic;
-    }
-
-    .color-picker {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-        padding: 0;
-        margin: 0;
-        pointer-events: none;
     }
 
     .button-group {
@@ -488,10 +401,6 @@
         padding-top: 0.25rem;
         border-top: 1px solid #eee;
         width: 100%;
-    }
-
-    .color-name {
-        color: #333;
     }
 
     .sender-name-input {
@@ -542,5 +451,27 @@
 
     .color-btn-container {
         position: relative;
+    }
+
+    /* 名字颜色控制样式 */
+    .name-color-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+        padding: 0.25rem;
+        border-top: 1px solid #eee;
+    }
+
+    .name-color-label {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .name-color-picker {
+        margin-left: auto;
     }
 </style> 

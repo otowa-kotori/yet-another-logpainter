@@ -9,6 +9,8 @@ export interface LogEntry {
     message: string;
     /** 显示颜色（用于UI渲染） */
     color?: Color;
+    /** 名字显示颜色（用于UI渲染） */
+    nameColor?: Color;
     /** 原始日志文本 */
     raw: string;
     /** 额外的元数据信息，键值对形式 */

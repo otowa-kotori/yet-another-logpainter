@@ -35,6 +35,7 @@ interface ColorEntryJSON {
     color: string;
     aliases: string[];
     type?: NameType;
+    nameColor?: string;
 }
 
 // 新增 ColorEntry 类来管理单个颜色的所有信息
@@ -43,7 +44,8 @@ class ColorEntry {
         public readonly name: string,
         public readonly color: chroma.Color,
         public readonly aliases: string[] = [],
-        public readonly type: NameType = "normal"
+        public readonly type: NameType = "normal",
+        public readonly nameColor?: chroma.Color | null
     ) {}
 
     with(changes: Partial<Omit<ColorEntry, 'with' | 'toJSON'>>): ColorEntry {
@@ -51,7 +53,8 @@ class ColorEntry {
             changes.name ?? this.name,
             changes.color ?? this.color,
             changes.aliases ?? this.aliases,
-            changes.type ?? this.type
+            changes.type ?? this.type,
+            'nameColor' in changes ? changes.nameColor : this.nameColor
         );
     }
 
@@ -60,7 +63,8 @@ class ColorEntry {
             json.name, 
             chroma(json.color), 
             json.aliases, 
-            json.type ?? "normal"
+            json.type ?? "normal",
+            json.nameColor ? chroma(json.nameColor) : null
         );
     }
 
@@ -73,6 +77,10 @@ class ColorEntry {
         
         if (this.type !== "normal") {
             result.type = this.type;
+        }
+        
+        if (this.nameColor) {
+            result.nameColor = this.nameColor.hex();
         }
         
         return result;
@@ -106,9 +114,14 @@ export class ColorConfig {
         return this.entriesMap.get(name)?.aliases ?? [];
     }
 
-    getColor(name: string): chroma.Color {
+    // 获取颜色条目的方法
+    getColorEntry(name: string): ColorEntry | undefined {
         const standardName = this.getStandardName(name);
-        return this.entriesMap.get(standardName)?.color ?? chroma('black');
+        return this.entriesMap.get(standardName);
+    }
+    
+    getColor(name: string): chroma.Color {
+        return this.getColorEntry(name)?.color ?? chroma('black');
     }
 
     hasColor(name: string): boolean {
@@ -145,16 +158,26 @@ export class ColorConfig {
         return new ColorConfig(newEntries);
     }
 
-    setColor(name: string, color: chroma.Color | string): ColorConfig {
-        const chromaColor = typeof color === 'string' ? chroma(color) : color;
+    setColor(name: string, color: chroma.Color): ColorConfig {
         const index = this.entries.findIndex(e => e.name === name);
         if (index === -1) return this;
 
         const newEntries = [...this.entries];
-        newEntries[index] = newEntries[index].with({ color: chromaColor });
+        newEntries[index] = newEntries[index].with({ color: color });
         
         return new ColorConfig(newEntries);
     }
+
+    setNameColor(name: string, color: chroma.Color | null): ColorConfig {
+        const index = this.entries.findIndex(e => e.name === name);
+        if (index === -1) return this;
+        
+        const newEntries = [...this.entries];
+        newEntries[index] = newEntries[index].with({ nameColor: color });
+        
+        return new ColorConfig(newEntries);
+    }
+        
 
     setNameType(name: string, type: NameType): ColorConfig {
         const index = this.entries.findIndex(e => e.name === name);

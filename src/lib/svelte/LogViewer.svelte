@@ -8,7 +8,7 @@
 {#each log as entry}
     <div class="log-entry">
         <span class="log-time">{formatTime(entry.time, 'short')}</span>
-        <span class="log-sender" style="color:{entry.color?.hex()}">&lt;{entry.sender}&gt;</span>
+        <span class="log-sender" style="color:{entry.nameColor?.hex() || entry.color?.hex() || 'black'}">&lt;{entry.sender}&gt;</span>
         <span class="log-message" style="color:{entry.color?.hex()}">{entry.message}</span>
     </div>
 {/each}

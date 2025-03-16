@@ -107,11 +107,17 @@ export class ColorProcessor extends LogProcessor {
             .map(entry => {
                 const standardName = this.colorConfig.getStandardName(entry.sender);
                 const nameType = this.colorConfig.getNameType(standardName);
+                
+                // 获取标准名称对应的条目
+                const colorEntry = this.colorConfig.getColorEntry(entry.sender);
+                
                 return {
                     ...entry,
                     // 如果type为preserve_alias则保留原始名字,否则使用标准名字
                     sender: nameType === "preserve_alias" ? entry.sender : standardName,
-                    color: this.colorConfig.getColor(entry.sender)
+                    color: this.colorConfig.getColor(entry.sender),
+                    // 如果有设置nameColor则使用，否则使用color
+                    nameColor: colorEntry?.nameColor
                 };
             });
     }
