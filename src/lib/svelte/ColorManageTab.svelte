@@ -243,7 +243,7 @@
                                     checked={!!sender.nameColor}
                                     on:change={(e) => handleNameColorToggle(sender.name, e.currentTarget.checked)}
                                 />
-                                独立名字颜色
+                                设置名字颜色
                             </label>
                             {#if sender.nameColor}
                                 <div class="name-color-picker">
@@ -458,15 +458,13 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        margin-top: 0.25rem;
-        padding: 0.25rem;
-        border-top: 1px solid #eee;
+        padding-left: 0.25rem;
+        height: 2rem;
     }
 
     .name-color-label {
         display: flex;
         align-items: center;
-        gap: 0.25rem;
         font-size: 0.8rem;
         cursor: pointer;
     }
