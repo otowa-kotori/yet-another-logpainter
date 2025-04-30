@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { AutoDetectLogParser, ProcessorGroup, BBCodeFormatter } from '$lib';
+    import { AutoDetectLogParser, ProcessorGroup, BBCodeFormatter, StandardHTMLFormatter } from '$lib';
     import { 
         SplitMultilineProcessor,
         RemoveImageProcessor,
@@ -31,6 +31,7 @@
     let processedLogs: Log;
     let coloredLogs: Log;
     let bbcodeOutput = '';
+    let htmlOutput = '';
 
     const tabs = [
         { id: 'preview', label: '预览' },
@@ -68,6 +69,9 @@
         // 更新BBCode输出
         const bbcodeFormatter = new BBCodeFormatter();
         bbcodeOutput = bbcodeFormatter.format(coloredLogs);
+        // 更新HTML输出
+        const htmlFormatter = new StandardHTMLFormatter();
+        htmlOutput = htmlFormatter.format(coloredLogs);
     }
     function onColorConfigUpdate(newConfig: ColorConfig) {
         colorConfig = newConfig;
@@ -124,7 +128,7 @@
 
             <TabContainer {tabs} let:activeTab>
                 {#if activeTab === 'preview'}
-                    <PreviewTab log={coloredLogs} />
+                    <PreviewTab log={coloredLogs} htmlText={htmlOutput} />
                 {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
                 {:else if activeTab === 'color'}

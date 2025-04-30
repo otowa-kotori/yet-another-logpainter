@@ -176,11 +176,70 @@ export class FVTTLogParser extends LogParser {
 }   
 
 /**
+ * 菠萝日志解析器
+ * 支持形如：
+ * [2025-03-28 20:03] <名称>  消息内容
+ * 的解析格式
+ */
+export class BoluoLogParser extends LogParser {
+    parse(raw: string): Log {
+        const log: Log = [];
+        let currentEntry: LogEntry | null = null;
+
+        const lines = raw.split('\n');
+        for (const line of lines) {
+            // 匹配格式 [2025-03-28 20:03] <名称> 消息内容
+            const headerMatch = line.match(/^\[(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\]\s+<(.+?)>\s*(.*)$/);
+
+            if (headerMatch) {
+                // 如果有未完成的条目，先保存
+                if (currentEntry) {
+                    log.push(currentEntry);
+                }
+
+                const [_, dateStr, timeStr, sender, message] = headerMatch;
+                // 解析日期时间
+                const time = new Date(`${dateStr} ${timeStr}`);
+
+                // 创建新条目
+                currentEntry = {
+                    time,
+                    sender: sender.trim(),
+                    message: message.trim(),
+                    raw: line,
+                    metadata: {}
+                };
+
+                // 如果消息不为空，直接保存条目
+                if (currentEntry.message) {
+                    log.push(currentEntry);
+                    currentEntry = null;
+                }
+            } else if (currentEntry) {
+                // 将行添加到当前消息中
+                currentEntry.message += (currentEntry.message ? '\n' : '') + line.trim();
+                currentEntry.raw += '\n' + line;
+                
+                // 保存条目
+                log.push(currentEntry);
+                currentEntry = null;
+            }
+        }
+
+        // 保存最后一个条目
+        if (currentEntry) {
+            log.push(currentEntry);
+        }
+
+        return log;
+    }
+}
+/**
  * 自动检测日志
  */
 export class AutoDetectLogParser extends LogParser {
     parse(raw: string): Log {
-        const parsers = [new QQTextParser(), new IRCLogParser(), new FVTTLogParser()];
+        const parsers = [new QQTextParser(), new IRCLogParser(), new FVTTLogParser(), new BoluoLogParser()];
         // 尝试每个解析器并选择结果最多的
         let bestResult: Log = [];
         for (const parser of parsers) {
