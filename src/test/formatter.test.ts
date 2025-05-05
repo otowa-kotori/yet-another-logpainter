@@ -21,6 +21,15 @@ describe('FormatterOptions', () => {
             nameColor: undefined,
             raw: 'raw2',
             metadata: {}
+        },
+        {
+            time: new Date('2024-01-01T12:02:00Z'),
+            sender: 'Clair',
+            message: '合并颜色',
+            color: { hex: () => '#123456' } as any,
+            nameColor: { hex: () => '#123456' } as any,
+            raw: 'raw3',
+            metadata: {}
         }
     ];
 
@@ -94,5 +103,14 @@ describe('FormatterOptions', () => {
         expect(bbcode).not.toContain('[color=silver]');
         expect(bbcode).not.toContain('<Alice>');
         expect(bbcode).toContain('Hello, world!');
+    });
+
+    it('BBCodeFormatter: 发送者和消息颜色相同则合并包裹', () => {
+        const formatter = new BBCodeFormatter();
+        const bbcode = formatter.format(log);
+        // Clair的<Clair>和消息应该被同一个color包裹
+        expect(bbcode).toContain('[color=#123456]<Clair>合并颜色[/color]');
+        // 不应出现[color=#123456]<Clair>[/color][color=#123456]合并颜色[/color]
+        expect(bbcode).not.toContain('[color=#123456]<Clair>[/color][color=#123456]合并颜色[/color]');
     });
 }); 

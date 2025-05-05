@@ -57,15 +57,19 @@ export class BBCodeFormatter extends LogFormatter {
                 if (this.options.showSender) {
                     const senderColor = entry.color?.hex() || 'black';
                     const nameColor = entry.nameColor?.hex();
-                    if (nameColor) {
+                    if (nameColor && nameColor === senderColor) {
+                        parts.push(`[color=${senderColor}]<${entry.sender}>${entry.message}[/color]`);
+                        return parts.join('');
+                    } else if (nameColor) {
                         parts.push(`[color=${nameColor}]<${entry.sender}>[/color]`);
                     } else {
                         parts.push(`[color=${senderColor}]<${entry.sender}>[/color]`);
                     }
                 }
-                
-                const messageColor = entry.color?.hex() || 'black';
-                parts.push(`[color=${messageColor}]${entry.message}[/color]`);
+                if (!(entry.nameColor?.hex() && entry.nameColor.hex() === (entry.color?.hex() || 'black') && this.options.showSender)) {
+                    const messageColor = entry.color?.hex() || 'black';
+                    parts.push(`[color=${messageColor}]${entry.message}[/color]`);
+                }
                 return parts.join('');
             })
             .join('\n');
