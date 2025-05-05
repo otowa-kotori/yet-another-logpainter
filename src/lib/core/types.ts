@@ -35,9 +35,29 @@ export abstract class LogProcessor {
 }
 
 /**
+ * 格式化器选项
+ */
+export interface FormatterOptions {
+    /** 是否显示时间 */
+    showTime?: boolean;
+    /** 是否显示发送者名称 */
+    showSender?: boolean;
+}
+
+/**
  * 日志格式化器基类
  */
 export abstract class LogFormatter {
+    protected options: FormatterOptions;
+
+    constructor(options: FormatterOptions = {}) {
+        this.options = {
+            showTime: true,
+            showSender: true,
+            ...options
+        };
+    }
+
     abstract format(log: Log): string;
 }
 

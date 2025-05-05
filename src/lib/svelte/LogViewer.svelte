@@ -1,14 +1,22 @@
 <script lang="ts">
-    import type { Log } from '../core/types';
+    import type { Log, FormatterOptions } from '../core/types';
     import { formatTime } from '../utils';
     
     export let log: Log;
+    export let options: FormatterOptions = {
+        showTime: true,
+        showSender: true
+    };
 </script>
 
 {#each log as entry}
     <div class="log-entry">
-        <span class="log-time">{formatTime(entry.time, 'short')}</span>
-        <span class="log-sender" style="color:{entry.nameColor?.hex() || entry.color?.hex() || 'black'}">&lt;{entry.sender}&gt;</span>
+        {#if options.showTime}
+            <span class="log-time">{formatTime(entry.time, 'short')}</span>
+        {/if}
+        {#if options.showSender}
+            <span class="log-sender" style="color:{entry.nameColor?.hex() || entry.color?.hex() || 'black'}">&lt;{entry.sender}&gt;</span>
+        {/if}
         <span class="log-message" style="color:{entry.color?.hex()}">{entry.message}</span>
     </div>
 {/each}

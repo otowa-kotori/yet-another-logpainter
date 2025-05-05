@@ -9,11 +9,12 @@
         ColorProcessor,
         RemoveEmptyMessageProcessor
     } from '$lib/core/processor';
-    import type { Log } from '$lib/core/types';
+    import type { Log, FormatterOptions } from '$lib/core/types';
     import TabContainer from '$lib/svelte/TabContainer.svelte';
     import PreviewTab from '$lib/svelte/PreviewTab.svelte';
     import BBCodeTab from '$lib/svelte/BBCodeTab.svelte';
     import ColorManageTab from '$lib/svelte/ColorManageTab.svelte';
+    import FormatterOptionsTab from '$lib/svelte/FormatterOptionsTab.svelte';
     import { AssignColors, ColorConfig } from '$lib/core/namecolorer';
     import { dropzone } from '$lib/actions/dropzone';
     import '$lib/styles/common.css';
@@ -32,11 +33,16 @@
     let coloredLogs: Log;
     let bbcodeOutput = '';
     let htmlOutput = '';
+    let formatterOptions: FormatterOptions = {
+        showTime: true,
+        showSender: true
+    };
 
     const tabs = [
         { id: 'preview', label: '预览' },
         { id: 'bbcode', label: 'BBCode' },
         { id: 'processor', label: '文本处理设置' },
+        { id: 'formatter', label: '输出设置' },
         { id: 'color', label: '颜色管理' },
     ];
 
@@ -67,12 +73,18 @@
         const colorProcessor = new ColorProcessor(colorConfig);
         coloredLogs = colorProcessor.process(processedLogs);
         // 更新BBCode输出
-        const bbcodeFormatter = new BBCodeFormatter();
+        const bbcodeFormatter = new BBCodeFormatter(formatterOptions);
         bbcodeOutput = bbcodeFormatter.format(coloredLogs);
         // 更新HTML输出
-        const htmlFormatter = new StandardHTMLFormatter();
+        const htmlFormatter = new StandardHTMLFormatter(formatterOptions);
         htmlOutput = htmlFormatter.format(coloredLogs);
     }
+
+    function onFormatterOptionsUpdate(newOptions: FormatterOptions) {
+        formatterOptions = newOptions;
+        applyColors();
+    }
+
     function onColorConfigUpdate(newConfig: ColorConfig) {
         colorConfig = newConfig;
         applyColors();
@@ -128,7 +140,7 @@
 
             <TabContainer {tabs} let:activeTab>
                 {#if activeTab === 'preview'}
-                    <PreviewTab log={coloredLogs} htmlText={htmlOutput} />
+                    <PreviewTab log={coloredLogs} htmlText={htmlOutput} options={formatterOptions} />
                 {:else if activeTab === 'bbcode'}
                     <BBCodeTab bbcode={bbcodeOutput} />
                 {:else if activeTab === 'color'}
@@ -137,6 +149,11 @@
                     <ProcessorTab 
                         processorConfig={$processorConfig}
                         onConfigUpdate={onProcessorConfigUpdate}
+                    />
+                {:else if activeTab === 'formatter'}
+                    <FormatterOptionsTab 
+                        options={formatterOptions}
+                        onOptionsUpdate={onFormatterOptionsUpdate}
                     />
                 {/if}
             </TabContainer>

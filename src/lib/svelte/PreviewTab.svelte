@@ -1,9 +1,10 @@
 <script lang="ts">
-    import type { Log } from '../core/types';
+    import type { Log, FormatterOptions } from '../core/types';
     import LogViewer from './LogViewer.svelte';
     
     export let log: Log;
     export let htmlText: string;
+    export let options: FormatterOptions;
     import fileSaver from 'file-saver';
     import { asBlob } from 'html-docx-js-typescript'
 
@@ -21,7 +22,7 @@
 </div>
 
 <div class="preview-tab">
-    <LogViewer {log} />
+    <LogViewer {log} {options} />
 </div>
 
 <style>

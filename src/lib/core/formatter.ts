@@ -18,9 +18,21 @@ export class StandardHTMLFormatter extends LogFormatter {
     format(log: Log): string {
         return log
             .map(entry => {
-                const timeStr = formatTime(entry.time, 'short');
-                const senderColor = entry.color?.hex() || 'black';
-                return `<span style="color:silver">${timeStr}</span><span style="color:${senderColor}">&lt;${entry.sender}&gt;${entry.message}</span><br>`;
+                const parts: string[] = [];
+                
+                if (this.options.showTime) {
+                    const timeStr = formatTime(entry.time, 'short');
+                    parts.push(`<span style="color:silver">${timeStr}</span>`);
+                }
+                
+                if (this.options.showSender) {
+                    const senderColor = entry.color?.hex() || 'black';
+                    parts.push(`<span style="color:${senderColor}">&lt;${entry.sender}&gt;</span>`);
+                }
+                
+                const messageColor = entry.color?.hex() || 'black';
+                parts.push(`<span style="color:${messageColor}">${entry.message}</span>`);
+                return parts.join('') + '<br>';
             })
             .join('\n');
     }
@@ -35,14 +47,26 @@ export class BBCodeFormatter extends LogFormatter {
     format(log: Log): string {
         return log
             .map(entry => {
-                const timeStr = formatTime(entry.time, 'short');
-                const senderColor = entry.color?.hex() || 'black';
-                const nameColor = entry.nameColor?.hex();
-                if (nameColor) {
-                    return `[color=silver]${timeStr}[/color][color=${nameColor}]<${entry.sender}>[/color][color=${senderColor}]${entry.message}[/color]`;
-                } else {
-                    return `[color=silver]${timeStr}[/color][color=${senderColor}]<${entry.sender}>${entry.message}[/color]`;
+                const parts: string[] = [];
+                
+                if (this.options.showTime) {
+                    const timeStr = formatTime(entry.time, 'short');
+                    parts.push(`[color=silver]${timeStr}[/color]`);
                 }
+                
+                if (this.options.showSender) {
+                    const senderColor = entry.color?.hex() || 'black';
+                    const nameColor = entry.nameColor?.hex();
+                    if (nameColor) {
+                        parts.push(`[color=${nameColor}]<${entry.sender}>[/color]`);
+                    } else {
+                        parts.push(`[color=${senderColor}]<${entry.sender}>[/color]`);
+                    }
+                }
+                
+                const messageColor = entry.color?.hex() || 'black';
+                parts.push(`[color=${messageColor}]${entry.message}[/color]`);
+                return parts.join('');
             })
             .join('\n');
     }
