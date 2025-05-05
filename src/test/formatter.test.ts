@@ -76,8 +76,8 @@ describe('FormatterOptions', () => {
         const bbcode = formatter.format(log);
         expect(bbcode).toContain('[color=silver]');
         expect(bbcode).toContain('<Alice>');
-        expect(bbcode).toContain('[color=#ff0000]Hello, world![/color]');
-        expect(bbcode).toContain('[color=#0000ff]Hi, Alice![/color]');
+        expect(bbcode).toContain('Hello, world!');
+        expect(bbcode).toContain('Hi, Alice!');
     });
 
     it('BBCodeFormatter: 不显示时间', () => {
@@ -105,12 +105,27 @@ describe('FormatterOptions', () => {
         expect(bbcode).toContain('Hello, world!');
     });
 
-    it('BBCodeFormatter: 发送者和消息颜色相同则合并包裹', () => {
+    it('BBCodeFormatter: nameColor不存在时合并包裹', () => {
+        const formatter = new BBCodeFormatter();
+        const bbcode = formatter.format(log);
+        // Bob没有nameColor，应该合并包裹
+        expect(bbcode).toContain('[color=#0000ff]<Bob>Hi, Alice![/color]');
+        // 不应出现[color=#0000ff]<Bob>[/color][color=#0000ff]Hi, Alice![/color]
+        expect(bbcode).not.toContain('[color=#0000ff]<Bob>[/color][color=#0000ff]Hi, Alice![/color]');
+    });
+
+    it('BBCodeFormatter: nameColor和senderColor相同时合并包裹', () => {
         const formatter = new BBCodeFormatter();
         const bbcode = formatter.format(log);
         // Clair的<Clair>和消息应该被同一个color包裹
         expect(bbcode).toContain('[color=#123456]<Clair>合并颜色[/color]');
-        // 不应出现[color=#123456]<Clair>[/color][color=#123456]合并颜色[/color]
         expect(bbcode).not.toContain('[color=#123456]<Clair>[/color][color=#123456]合并颜色[/color]');
+    });
+
+    it('BBCodeFormatter: nameColor和senderColor不同时分开包裹', () => {
+        const formatter = new BBCodeFormatter();
+        const bbcode = formatter.format(log);
+        // Alice的<sender>和消息应该分开包裹
+        expect(bbcode).toContain('[color=#00ff00]<Alice>[/color][color=#ff0000]Hello, world![/color]');
     });
 }); 

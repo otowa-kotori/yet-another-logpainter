@@ -48,31 +48,28 @@ export class BBCodeFormatter extends LogFormatter {
         return log
             .map(entry => {
                 const parts: string[] = [];
-                
                 if (this.options.showTime) {
                     const timeStr = formatTime(entry.time, 'short');
                     parts.push(`[color=silver]${timeStr}[/color]`);
                 }
-                
                 if (this.options.showSender) {
                     const senderColor = entry.color?.hex() || 'black';
                     const nameColor = entry.nameColor?.hex();
-                    if (nameColor && nameColor === senderColor) {
+                    if (!nameColor || nameColor === senderColor) {
+                        // 合并发送者和消息
                         parts.push(`[color=${senderColor}]<${entry.sender}>${entry.message}[/color]`);
                         return parts.join('');
-                    } else if (nameColor) {
-                        parts.push(`[color=${nameColor}]<${entry.sender}>[/color]`);
                     } else {
-                        parts.push(`[color=${senderColor}]<${entry.sender}>[/color]`);
+                        // 分开发送者和消息
+                        parts.push(`[color=${nameColor}]<${entry.sender}>[/color]`);
                     }
                 }
-                if (!(entry.nameColor?.hex() && entry.nameColor.hex() === (entry.color?.hex() || 'black') && this.options.showSender)) {
-                    const messageColor = entry.color?.hex() || 'black';
-                    parts.push(`[color=${messageColor}]${entry.message}[/color]`);
-                }
+                const messageColor = entry.color?.hex() || 'black';
+                parts.push(`[color=${messageColor}]${entry.message}[/color]`);
                 return parts.join('');
             })
             .join('\n');
     }
 }
+
 
