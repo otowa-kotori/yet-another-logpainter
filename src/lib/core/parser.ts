@@ -209,20 +209,10 @@ export class BoluoLogParser extends LogParser {
                     raw: line,
                     metadata: {}
                 };
-
-                // 如果消息不为空，直接保存条目
-                if (currentEntry.message) {
-                    log.push(currentEntry);
-                    currentEntry = null;
-                }
             } else if (currentEntry) {
                 // 将行添加到当前消息中
                 currentEntry.message += (currentEntry.message ? '\n' : '') + line.trim();
-                currentEntry.raw += '\n' + line;
-                
-                // 保存条目
-                log.push(currentEntry);
-                currentEntry = null;
+                currentEntry.raw += '\n' + line;                
             }
         }
 
