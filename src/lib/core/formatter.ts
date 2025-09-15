@@ -31,7 +31,9 @@ export class StandardHTMLFormatter extends LogFormatter {
                 }
                 
                 const messageColor = entry.color?.hex() || 'black';
-                parts.push(`<span style="color:${messageColor}">${entry.message}</span>`);
+                // 将消息中的换行符替换为<br>
+                const formattedMessage = entry.message.replace(/\n/g, '<br>');
+                parts.push(`<span style="color:${messageColor}">${formattedMessage}</span>`);
                 return parts.join('') + '<br>';
             })
             .join('\n');
