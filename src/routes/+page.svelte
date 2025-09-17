@@ -114,7 +114,11 @@
         }
     }
 </script>
-<link rel="stylesheet" href="pico.min.css">
+
+<svelte:head>
+	<link rel="stylesheet" href="pico.min.css">
+    <title>QQ聊天记录着色器</title>
+</svelte:head>
 
 <main class="container">
     <div class="content">
